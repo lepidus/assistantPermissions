@@ -19,7 +19,9 @@ crie ou edite qualquer papel de nível **Assistant**. O nome do papel é livre.
 - **Impedir comunicação com autores e pareceristas:** mantém suas identidades visíveis, mas impede
   notificações diretas, seleção como destinatários de discussões e respostas em discussões que já
   os incluam. Também bloqueia operações de avaliação que enviariam mensagens automaticamente.
-  A comunicação interna continua disponível pelas discussões com a equipe editorial.
+  **Notificar** permanece disponível para a equipe editorial atribuída à etapa, desde que o destinatário
+  não seja autor nem parecerista da submissão, mesmo acumulando papéis. Menus sem ações permitidas
+  ficam ocultos. A comunicação interna também continua disponível pelas discussões com a equipe editorial.
 
 As opções são independentes. Ative ambas para o perfil de conselho solicitado. As restrições são
 aplicadas no servidor e na interface, por editora, submissão e etapa atribuída. Uma atribuição restrita

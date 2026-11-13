@@ -1,0 +1,9 @@
+{
+  "name": "editorial-advisor",
+  "private": true,
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "test": "node tests/frontend.test.cjs"
+  },
+  "license": "GPL-3.0-only"
+}

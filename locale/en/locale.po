@@ -1,0 +1,37 @@
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Language: en\n"
+
+msgid "plugins.generic.editorialAdvisor.name"
+msgstr "Editorial Advisor"
+
+msgid "plugins.generic.editorialAdvisor.description"
+msgstr "Adds recommendation-only and communication restrictions to Assistant roles in OMP."
+
+msgid "plugins.generic.editorialAdvisor.blockContact"
+msgstr "Prevent communication with authors and reviewers (keep their identities visible)"
+
+msgid "plugins.generic.editorialAdvisor.denied"
+msgstr "This action is not permitted for this editorial role."
+
+msgid "plugins.generic.editorialAdvisor.invalidRecommendation"
+msgstr "Select a recommendation for the current stage and review round."
+
+msgid "plugins.generic.editorialAdvisor.noEditors"
+msgstr "The recommendation requires an assigned deciding editor who is not an author or reviewer."
+
+msgid "plugins.generic.editorialAdvisor.recommend"
+msgstr "Recommend a decision to the editor"
+
+msgid "plugins.generic.editorialAdvisor.recommendation"
+msgstr "Recommendation"
+
+msgid "plugins.generic.editorialAdvisor.comment"
+msgstr "Comments for the editorial team"
+
+msgid "plugins.generic.editorialAdvisor.saved"
+msgstr "Recommendation recorded."
+
+msgid "plugins.generic.editorialAdvisor.failed"
+msgstr "Unable to record the recommendation."

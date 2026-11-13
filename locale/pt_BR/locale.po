@@ -1,0 +1,37 @@
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Language: pt_BR\n"
+
+msgid "plugins.generic.editorialAdvisor.name"
+msgstr "Conselho editorial"
+
+msgid "plugins.generic.editorialAdvisor.description"
+msgstr "Adiciona opções de recomendação e restrição de comunicação aos papéis de nível Assistant no OMP."
+
+msgid "plugins.generic.editorialAdvisor.blockContact"
+msgstr "Impedir comunicação com autores e pareceristas (manter suas identidades visíveis)"
+
+msgid "plugins.generic.editorialAdvisor.denied"
+msgstr "Esta ação não é permitida para este papel editorial."
+
+msgid "plugins.generic.editorialAdvisor.invalidRecommendation"
+msgstr "Selecione uma recomendação para a etapa e a rodada de avaliação atuais."
+
+msgid "plugins.generic.editorialAdvisor.noEditors"
+msgstr "A recomendação exige um editor designado que possa decidir e não seja autor ou parecerista."
+
+msgid "plugins.generic.editorialAdvisor.recommend"
+msgstr "Recomendar uma decisão ao editor"
+
+msgid "plugins.generic.editorialAdvisor.recommendation"
+msgstr "Recomendação"
+
+msgid "plugins.generic.editorialAdvisor.comment"
+msgstr "Comentários para a equipe editorial"
+
+msgid "plugins.generic.editorialAdvisor.saved"
+msgstr "Recomendação registrada."
+
+msgid "plugins.generic.editorialAdvisor.failed"
+msgstr "Não foi possível registrar a recomendação."

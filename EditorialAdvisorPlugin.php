@@ -92,6 +92,8 @@ class EditorialAdvisorPlugin extends GenericPlugin
                 $args[0]->addStyleSheet('advisorRecommendation', $request->getBaseUrl() . '/' . $this->getPluginPath()
                     . '/public/styles/nativeRecommendation.css', ['contexts' => ['backend']]);
             }
+            $args[0]->addStyleSheet('advisorParticipants', $request->getBaseUrl() . '/' . $this->getPluginPath()
+                . '/public/styles/participants.css', ['contexts' => ['backend']]);
             $args[0]->addJavaScript(
                 'editorialAdvisor',
                 $request->getBaseUrl() . '/' . $this->getPluginPath() . '/public/build/editorialAdvisor.js',
@@ -219,7 +221,10 @@ class EditorialAdvisorPlugin extends GenericPlugin
         $stages = [];
         foreach ([1, 2, 3, 4, 5] as $id) {
             $stageRules = $access->restrictions($contextId, $userId, $submission->getId(), $id);
-            $stages[$id] = ['recommendOnly' => $stageRules->recommendOnly, 'blockContact' => $stageRules->blockContact];
+            $stages[$id] = [
+                'recommendOnly' => $stageRules->recommendOnly, 'blockContact' => $stageRules->blockContact,
+                'notifyParticipantIds' => $stageRules->blockContact ? $access->notificationRecipients($submission->getId(), $id) : [],
+            ];
         }
         foreach ($output['stages'] ?? [] as $key => $stage) {
             $id = (int) $stage['id'];
@@ -236,6 +241,7 @@ class EditorialAdvisorPlugin extends GenericPlugin
             'stages' => $stages,
             'recommendOnly' => $rules->recommendOnly,
             'blockContact' => $rules->blockContact,
+            'notifyParticipantIds' => $stages[$stageId]['notifyParticipantIds'] ?? [],
         ];
         return $output;
     }

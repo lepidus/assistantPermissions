@@ -14,7 +14,7 @@ function setup(submission, submissionStageId = submission?.stageId) {
                 // Like VueRegistry.storeExtend, dispatch only for an actual Pinia store ID.
                 const actualIds = ['workflow', 'reviewerManager', 'participantManager', ...fileManagerNamespaces.map(ns => `fileManager_${ns}`)];
                 if (!actualIds.includes(name)) return;
-                stores[name] = {props: {submission, submissionStageId}, extender: {extendFn(key, fn) {hooks[`${name}.${key}`] = fn;}}};
+                stores[name] = {getItemActions({participant}) { return hooks[`${name}.getItemActions`]([{name: 'participantNotify'}, {name: 'participantRemove'}], {submission, submissionStageId, participant}); }, props: {submission, submissionStageId}, extender: {extendFn(key, fn) {hooks[`${name}.${key}`] = fn;}}};
                 callback({store: stores[name]});
             },
         },
@@ -106,4 +106,41 @@ test('file upload actions remain available outside the restricted stage and for 
             assert.deepEqual(filter(actions), actions);
         }
     }
+});
+
+test('participant notification remains for editorial team but not forbidden participants', () => {
+    const submission = {stageId: 3, editorialAdvisor: {recommendOnly: true, blockContact: true, notifyParticipantIds: [2]}};
+    const hooks = setup(submission);
+    const actions = [{name: 'participantNotify'}, {name: 'participantEdit'}, {name: 'participantRemove'}, {name: 'participantLoginAs'}];
+    assert.deepEqual(hooks['participantManager.getItemActions'](actions, {submission, submissionStageId: 3, participant: {id: 2}}), actions.slice(0, 1));
+    assert.equal(hooks['participantManager.getItemActions'](actions, {submission, submissionStageId: 3, participant: {id: 3}}).length, 0);
+});
+test('empty participant menus are marked without changing identities or nonempty menus', () => {
+    const submission = {stageId: 3, editorialAdvisor: {recommendOnly: true, blockContact: true, notifyParticipantIds: [2]}};
+    const hooks = setup(submission);
+    const items = [{component: 'ParticipantManagerItemInfoName', props: {class: 'existing-class'}}];
+    const mark = hooks['participantManager.getItemInfoItems'];
+    assert.equal(typeof mark, 'function');
+    const empty = mark(items, {submission, submissionStageId: 3, participant: {id: 3}});
+    assert.equal(empty[0].props['data-advisor-empty-actions'], true);
+    assert.equal(empty[0].props.class, 'existing-class');
+    assert.deepEqual(mark(items, {submission, submissionStageId: 3, participant: {id: 2}}), items);
+});
+
+test('contact restriction preserves management unless recommend-only also applies', () => {
+    const submission = {stageId: 3, editorialAdvisor: {blockContact: true, notifyParticipantIds: [2]}};
+    const hooks = setup(submission);
+    const actions = [{name: 'participantNotify'}, {name: 'participantEdit'}];
+    assert.deepEqual(hooks['participantManager.getItemActions'](actions, {submission, submissionStageId: 3, participant: {id: 2}}), actions);
+    assert.deepEqual(hooks['participantManager.getItemActions'](actions, {submission, submissionStageId: 3, participant: {id: 3}}), actions.slice(1));
+});
+
+test('participant notifications follow the displayed stage allowlist', () => {
+    const submission = {stageId: 3, editorialAdvisor: {blockContact: true, notifyParticipantIds: [2], stages: {
+        2: {blockContact: true, notifyParticipantIds: [7]}, 3: {blockContact: true, notifyParticipantIds: [2]},
+    }}};
+    const hooks = setup(submission, 2);
+    const actions = [{name: 'participantNotify'}];
+    assert.equal(hooks['participantManager.getItemActions'](actions, {submission, submissionStageId: 2, participant: {id: 2}}).length, 0);
+    assert.deepEqual(hooks['participantManager.getItemActions'](actions, {submission, submissionStageId: 2, participant: {id: 7}}), actions);
 });

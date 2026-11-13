@@ -27,7 +27,8 @@ class RestrictionsTest extends TestCase
         self::assertFalse($rules->allowsComponent('grid.users.reviewer.ReviewerGridHandler', 'updateUnassignReviewer'));
         self::assertFalse($rules->allowsComponent('grid.users.reviewer.ReviewerGridHandler', 'updateReinstateReviewer'));
         self::assertFalse($rules->allowsComponent('grid.users.reviewer.ReviewerGridHandler', 'sendEmail'));
-        self::assertFalse($rules->allowsComponent('grid.users.stageParticipant.StageParticipantGridHandler', 'sendNotification'));
+        // Recipient-dependent restrictions are enforced by RequestPolicy.
+        self::assertTrue($rules->allowsComponent('grid.users.stageParticipant.StageParticipantGridHandler', 'sendNotification'));
     }
 
     public function testFileDeletionAndFinalDecisionsAreDenied(): void

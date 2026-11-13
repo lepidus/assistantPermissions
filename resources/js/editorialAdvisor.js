@@ -24,8 +24,16 @@
         store.extender.extendFn('getTopItems', (items, args) => rules(args.submission, args.submissionStageId).recommendOnly ? [] : items);
         store.extender.extendFn('getItemActions', (items, args) => {
             const config = rules(args.submission, args.submissionStageId);
-            return items.filter((item) => !(config.blockContact && item.name === 'participantNotify')
+            return items.filter((item) => !(config.blockContact && item.name === 'participantNotify'
+                && !config.notifyParticipantIds?.includes(Number(args.participant?.id)))
                 && !(config.recommendOnly && ['participantEdit', 'participantRemove', 'participantLoginAs'].includes(item.name)));
+        });
+        store.extender.extendFn('getItemInfoItems', (items, args) => {
+            if (!items.length || store.getItemActions({participant: args.participant}).length) return items;
+            // Native info components forward attributes to their root; CSS hides this row's empty menu.
+            return items.map((item, index) => index ? item : {...item,
+                props: {...item.props, 'data-advisor-empty-actions': true},
+            });
         });
     });
     // FileManager stores are namespaced; VueRegistry matches the complete Pinia store ID.

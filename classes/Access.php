@@ -59,6 +59,15 @@ class Access
             ->withUserId($userId)->withRecommendOnly(true)->whereIn('user_group_id', $groupIds)->exists();
     }
 
+    /** Only assigned editorial staff can receive direct participant notifications. */
+    public function notificationRecipients(int $submissionId, int $stageId): array
+    {
+        $staff = StageAssignment::withSubmissionIds([$submissionId])->withStageIds([$stageId])
+            ->withRoleIds([Role::ROLE_ID_MANAGER, Role::ROLE_ID_SUB_EDITOR, Role::ROLE_ID_ASSISTANT])
+            ->pluck('user_id')->all();
+        return array_values(array_diff(array_unique(array_map('intval', $staff)), $this->forbiddenParticipants($submissionId)));
+    }
+
     /** Authors and reviewers are excluded even when they also hold an editorial role. */
     public function forbiddenParticipants(int $submissionId): array
     {

@@ -41,6 +41,14 @@ class RequestPolicy extends AuthorizationPolicy
             } elseif (!$rules->allowsComponent($this->component, $this->operation)) {
                 return self::AUTHORIZATION_DENY;
             }
+            if ($rules->blockContact && str_contains(strtolower($this->component), 'stageparticipant')
+                && in_array(strtolower($this->operation), ['viewnotify', 'sendnotification'], true)) {
+                $recipient = $this->parameter('userId');
+                if (!$submissionId || !$stageId || !is_scalar($recipient) || !ctype_digit((string) $recipient)
+                    || !in_array((int) $recipient, $access->notificationRecipients($submissionId, $stageId), true)) {
+                    return self::AUTHORIZATION_DENY;
+                }
+            }
             if ($rules->recommendOnly && $this->modifiesReviewerAttachment()) {
                 return self::AUTHORIZATION_DENY;
             }

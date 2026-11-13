@@ -414,4 +414,52 @@ class AccessIntegrationTest extends TestCase
         }
     }
 
+    public function testParticipantNotifyAllowsEditorialTeamButRejectsAuthorsAndUnassignedUsers(): void
+    {
+        [$unused, $input, $editorId] = $this->recommendationFixture();
+        foreach (['viewNotify', 'sendNotification'] as $op) {
+            $request = $this->request(['submissionId' => $this->submissionId, 'stageId' => 3, 'userId' => $editorId]);
+            $policy = new RequestPolicy($request, 'grid.users.stageParticipant.StageParticipantGridHandler', $op);
+            self::assertSame(AuthorizationDecisionManager::AUTHORIZATION_NOT_APPLICABLE, $policy->effect());
+        }
+        $outsider = (int) DB::table('users')->whereNotIn('user_id', [$this->userId, $editorId])->value('user_id');
+        $request = $this->request(['submissionId' => $this->submissionId, 'stageId' => 3, 'userId' => $outsider]);
+        self::assertSame(
+            AuthorizationPolicy::AUTHORIZATION_DENY,
+            (new RequestPolicy($request, 'grid.users.stageParticipant.StageParticipantGridHandler', 'sendNotification'))->effect()
+        );
+        $authorGroup = UserGroup::withContextIds([$this->contextId])->withRoleIds([Role::ROLE_ID_AUTHOR])->first();
+        DB::table('stage_assignments')->insert([
+            'submission_id' => $this->submissionId, 'user_group_id' => $authorGroup->id,
+            'user_id' => $editorId, 'date_assigned' => date('Y-m-d H:i:s'),
+        ]);
+        foreach (['viewNotify', 'sendNotification'] as $op) {
+            $request = $this->request(['submissionId' => $this->submissionId, 'stageId' => 3, 'userId' => $editorId]);
+            self::assertSame(
+                AuthorizationPolicy::AUTHORIZATION_DENY,
+                (new RequestPolicy($request, 'grid.users.stageParticipant.StageParticipantGridHandler', $op))->effect()
+            );
+        }
+    }
+
+    public function testParticipantNotifyRejectsReviewerEvenWhenAlsoAnEditor(): void
+    {
+        [$unused, $input, $editorId] = $this->recommendationFixture();
+        $review = (array) DB::table('review_assignments')->first();
+        unset($review['review_id']);
+        $review['submission_id'] = $this->submissionId;
+        $review['reviewer_id'] = $editorId;
+        $review['stage_id'] = 3;
+        $review['review_round_id'] = $input['reviewRoundId'];
+        DB::table('review_assignments')->insert($review);
+        foreach (['viewNotify', 'sendNotification'] as $op) {
+            $request = $this->request(['submissionId' => $this->submissionId, 'stageId' => 3, 'userId' => $editorId]);
+            self::assertSame(
+                AuthorizationPolicy::AUTHORIZATION_DENY,
+                (new RequestPolicy($request, 'grid.users.stageParticipant.StageParticipantGridHandler', $op))->effect()
+            );
+        }
+        self::assertNotContains($editorId, (new Access())->notificationRecipients($this->submissionId, 3));
+    }
+
 }

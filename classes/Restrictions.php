@@ -29,11 +29,6 @@ class Restrictions
             && in_array($operation, ['saveparticipant', 'deleteparticipant', 'addparticipant'], true)) {
             return false;
         }
-        if ($this->blockContact && str_contains($component, 'stageparticipant')
-            && in_array($operation, ['viewnotify', 'sendnotification'], true)) {
-            // Internal communication remains available through discussions.
-            return false;
-        }
         if ($this->recommendOnly && str_contains($component, 'file')) {
             return in_array($operation, [
                 'fetchgrid', 'fetchrow', 'fetch', 'viewfile', 'downloadfile', 'downloadallfiles',

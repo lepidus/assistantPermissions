@@ -1,5 +1,7 @@
 # Validação da implementação
 
+As seções iniciais registram as validações históricas; a seção final descreve o fluxo atual.
+
 Alvo: OMP `stable-3_5_0`, core `0baac195989f0847d914d260f73c93787e7792bc`, PHP 8.2.33 e MySQL.
 Data: 13/11/2026. Referência: `documentacao-e-tarefas/scielo#974`.
 
@@ -56,3 +58,31 @@ No navegador, não aparecem Upload, Upload/Select Files, Edit ou Delete; More In
 Download de chapter4.pdf: HTTP 200, application/pdf, 14572 bytes. Chamadas diretas ao wizard,
 uploadFile, selectFiles, updateReviewFiles, POST de arquivo e PUT de cópia foram recusadas pelo plugin.
 A checagem da janela Mais informações continua limitada pelos erros nativos descritos acima.
+
+## Reutilização do fluxo nativo de recomendação — issue 974
+
+- Removidos `EditorialAdvisorRecommendation`, `RecommendationController` e o endpoint
+  `plugins/editorial-advisor/{id}/recommendations`, além de suas traduções e metadados exclusivos.
+- A interface mantém `WorkflowRecommendOnlyControls` nativo. A página herda `DecisionHandler::record()`;
+  o POST mantém a URL nativa `submissions/{id}/decisions` e herda `SubmissionController::addDecision()`.
+  As subclasses acrescentam autorização explícita só para o Assistant restrito, sem mutar políticas
+  nem middleware existentes. As demais requisições seguem os controllers originais.
+- Mantidas as verificações globais do OMP e as políticas nativas de contexto, submissão, tipo e etapa.
+  A política específica exige vínculo Assistant ativo, grupo e atribuição recommendOnly, submissão
+  concluída/em avaliação e rodada atual. Nega decisão final, proponente autor/parecerista e qualquer
+  editor decisor que também seja autor/parecerista. O POST exige uma discussão, sem CC/BCC ou anexos.
+- Navegador local: conselheiro974, submissão 2, avaliação externa/rodada 2. Botões nativos abrem
+  `decision/record/2`. Uma recomendação sintética completou a confirmação nativa, atualizou
+  `currentUserRecommendation` para Accept Submission e preservou etapa 3/status 1. O Mailpit local
+  capturou um e-mail para um editor. Não houve envio externo.
+- HTTP autenticado: rodada inválida, decisão final, CC/BCC, anexo, ação adicional e submissão
+  conflitante recusados com HTTP 401; envio sem CSRF recebeu HTTP 403. Página com ID conflitante
+  não renderizou o formulário. O endpoint antigo retornou 404. O upload continuou indisponível. A interface não oferece anexação nem CC/BCC.
+- A autorização é reavaliada no POST. Não foram exercitadas alterações concorrentes de papéis,
+  atribuições ou rodada durante o envio, nem autenticação por token API; o fluxo validado usa sessão.
+  A integração mantém o comportamento transacional nativo, sem garantias adicionais de concorrência.
+- Erros nativos de Mais informações permanecem fora deste ajuste. Não foram alterados arquivos do núcleo.
+
+Resultado final desta etapa: 26 testes PHP/102 asserções e 11 testes JavaScript aprovados,
+além de sintaxe, estilo, traduções e diff sem erros. Validação HTTP/browser com sessão local
+na avaliação externa; a avaliação interna não foi exercitada pelo navegador nesta etapa.

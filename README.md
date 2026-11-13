@@ -9,7 +9,8 @@ Instale o pacote como plugin genérico e ative-o na editora. Em **Configuraçõe
 crie ou edite qualquer papel de nível **Assistant**. O nome do papel é livre.
 
 - **Apenas recomendar uma decisão:** habilita recomendações ao editor nas etapas de avaliação interna e
-  externa, usando os tipos nativos do OMP. Impede decisões finais, gestão de avaliações/avaliadores,
+  externa, usando os controles, a página e o fluxo nativos do OMP (mensagem aos editores,
+  discussão interna e registro da recomendação). Não há formulário nem endpoint próprios de recomendação. Impede decisões finais, gestão de avaliações/avaliadores,
   alteração de anexos do parecerista e edição, substituição ou exclusão de arquivos existentes.
   Nas listas de arquivos, mantém apenas a ação **Mais informações**, além do download.
   Envio e seleção de arquivos ficam indisponíveis, inclusive por chamadas diretas ao servidor.
@@ -26,7 +27,8 @@ prevalece sobre outros papéis do mesmo usuário **na mesma etapa**. O plugin n�
 submissões não atribuídas, nem capacidades editoriais a um autor/parecerista da própria submissão.
 
 As recomendações exigem uma submissão em avaliação, a rodada atual e ao menos um editor decisor
-atribuído que não seja autor ou parecerista. Não alteram a etapa nem o status editorial. Na submissão
+atribuído. Se algum editor decisor também for autor ou parecerista, a recomendação é recusada
+para impedir contato pelo fluxo nativo. CC/BCC e anexos não estão disponíveis ao conselheiro. Não alteram a etapa nem o status editorial. Na submissão
 inicial, edição e produção não existem recomendações nativas disponibilizadas por este plugin.
 
 Nenhum arquivo do núcleo é modificado. Desativar o plugin remove suas restrições adicionais; dados,

@@ -40,12 +40,19 @@ concretos pendentes no recorte revisado. As regressões verificadas estão inclu
   para `fileSeeNotes` (Mais informações); perfis e etapas sem restrição preservam as ações nativas.
 - Edição de metadados, substituição por `revisedFileId`, PUT/PATCH e exclusão de arquivos
   existentes são recusados no servidor. Nenhum arquivo do núcleo foi alterado.
-- Novo upload mantém uma autorização inicial vinculada ao arquivo, sessão e usuário,
-  armazenada nas configurações nativas do arquivo, sem migração de esquema. O formulário válido
-  consome essa autorização por DELETE condicional antes da escrita; uma segunda gravação falha.
+- Envio, seleção e cópia de arquivos são recusados no servidor e os botões de upload/seleção
+  são removidos dos seis FileManagers. A antiga exceção de metadados iniciais foi removida
+  integralmente (classe, hooks e permissão especial), sem alterações no núcleo ou no esquema.
 - Navegador local: conselheiro974, submissão 2, etapa de avaliação externa. Menu do chapter4.pdf
   apresentou zero ações Edit/Delete e uma More Information. Chamadas diretas de edição de
-  metadados e PUT foram recusadas. Upload sintético concluiu a etapa File Added.
+  metadados e PUT foram recusadas. Na validação anterior, o upload sintético ainda era permitido;
+  essa permissão foi retirada pelo ajuste que restringe arquivos à consulta.
 - Limitação observada separadamente: a janela nativa Mais informações apresentou erro de acesso
   no histórico e erro de classe `Note` não encontrada na aba de notas. A ação é mantida pelo plugin;
   o funcionamento dessas abas não foi corrigido nesta etapa.
+
+Validação do modo de consulta: 21 testes PHP (84 asserções) e 11 testes JavaScript aprovados.
+No navegador, não aparecem Upload, Upload/Select Files, Edit ou Delete; More Information permanece.
+Download de chapter4.pdf: HTTP 200, application/pdf, 14572 bytes. Chamadas diretas ao wizard,
+uploadFile, selectFiles, updateReviewFiles, POST de arquivo e PUT de cópia foram recusadas pelo plugin.
+A checagem da janela Mais informações continua limitada pelos erros nativos descritos acima.

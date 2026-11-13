@@ -12,7 +12,8 @@ crie ou edite qualquer papel de nível **Assistant**. O nome do papel é livre.
   externa, usando os tipos nativos do OMP. Impede decisões finais, gestão de avaliações/avaliadores,
   alteração de anexos do parecerista e edição, substituição ou exclusão de arquivos existentes.
   Nas listas de arquivos, mantém apenas a ação **Mais informações**, além do download.
-  O envio de novos arquivos e a gravação inicial de seus metadados continuam disponíveis. A discussão da recomendação inclui somente
+  Envio e seleção de arquivos ficam indisponíveis, inclusive por chamadas diretas ao servidor.
+  A discussão da recomendação inclui somente
   o conselheiro e os editores decisores elegíveis.
 - **Impedir comunicação com autores e pareceristas:** mantém suas identidades visíveis, mas impede
   notificações diretas, seleção como destinatários de discussões e respostas em discussões que já

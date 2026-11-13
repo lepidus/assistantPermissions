@@ -12,18 +12,22 @@ class Access
 {
     public const BLOCK_CONTACT = 'editorialAdvisorBlockContact';
 
+    private array $groupsByUser = [];
+
     /** Restrictions apply if any active Assistant assignment is restricted, regardless of its name. */
     public function restrictions(int $contextId, int $userId, ?int $submissionId = null, ?int $stageId = null): Restrictions
     {
-        $groups = UserGroup::withContextIds([$contextId])
+        $key = $contextId . ':' . $userId;
+        $groups = $this->groupsByUser[$key] ??= UserGroup::withContextIds([$contextId])
             ->withRoleIds([Role::ROLE_ID_ASSISTANT])
             ->whereHas('userUserGroups', fn ($q) => $q->withActive()->withUserId($userId))
+            ->with(['userGroupStages', 'stageAssignments' => fn ($q) => $q->withUserId($userId)])
             ->get();
         if ($submissionId !== null) {
             $stageId ??= (int) DB::table('submissions')->where('submission_id', $submissionId)->value('stage_id');
-            $assignedIds = StageAssignment::withSubmissionIds([$submissionId])->withStageIds([$stageId])
-                ->withUserId($userId)->pluck('user_group_id')->all();
-            $groups = $groups->whereIn('id', $assignedIds);
+            $groups = $groups->filter(fn ($group) =>
+                $group->stageAssignments->contains('submissionId', $submissionId)
+                && $group->userGroupStages->contains('stageId', $stageId));
         }
         return new Restrictions(
             $groups->contains(fn ($g) => (bool) $g->recommendOnly),

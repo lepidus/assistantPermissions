@@ -35,3 +35,24 @@ msgstr "Recommendation recorded."
 
 msgid "plugins.generic.editorialAdvisor.failed"
 msgstr "Unable to record the recommendation."
+
+msgid "plugins.generic.editorialAdvisor.readOnlyDiscussion"
+msgstr "This discussion includes an author or reviewer and is available for reading only."
+
+msgid "plugins.generic.editorialAdvisor.reviewerRecommendation.1"
+msgstr "Accept"
+
+msgid "plugins.generic.editorialAdvisor.reviewerRecommendation.2"
+msgstr "Revisions required"
+
+msgid "plugins.generic.editorialAdvisor.reviewerRecommendation.3"
+msgstr "Resubmit for review"
+
+msgid "plugins.generic.editorialAdvisor.reviewerRecommendation.4"
+msgstr "Submit elsewhere"
+
+msgid "plugins.generic.editorialAdvisor.reviewerRecommendation.5"
+msgstr "Decline"
+
+msgid "plugins.generic.editorialAdvisor.reviewerRecommendation.6"
+msgstr "See comments"

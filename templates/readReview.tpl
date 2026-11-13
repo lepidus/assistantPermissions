@@ -1,7 +1,7 @@
 <div class="pkp_form" data-cy="advisor-read-review">
     <h2>{$reviewAssignment->getReviewerFullName()|escape}</h2>
     {if $reviewAssignment->getRecommendation()}
-        <p>{$reviewAssignment->getLocalizedRecommendation()|escape}</p>
+        <p>{$advisorReviewerRecommendation|escape}</p>
     {/if}
     {if $reviewAssignment->getCompetingInterests()}
         <h3>{translate key="reviewer.submission.competingInterests"}</h3>

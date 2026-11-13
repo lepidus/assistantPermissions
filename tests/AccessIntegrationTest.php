@@ -131,6 +131,12 @@ class AccessIntegrationTest extends TestCase
             'insertNote'
         );
         self::assertSame(AuthorizationPolicy::AUTHORIZATION_DENY, $policy->effect());
+        $deletePolicy = new RequestPolicy(
+            $this->request(['queryId' => $queryId]),
+            'grid.queries.QueryNotesGridHandler',
+            'deleteNote'
+        );
+        self::assertSame(AuthorizationPolicy::AUTHORIZATION_DENY, $deletePolicy->effect());
     }
 
     public function testComponentPolicyBlocksManagementWithoutGrantingCoreAccess(): void
@@ -194,6 +200,119 @@ class AccessIntegrationTest extends TestCase
         ]));
         self::assertSame(422, $response->getStatusCode());
         self::assertSame(0, DB::table('edit_decisions')->where('submission_id', $this->submissionId)->count());
+    }
+
+    public function testNewAssignmentsUseTheAssistantGroupRecommendationSetting(): void
+    {
+        DB::table('stage_assignments')->where('submission_id', $this->submissionId)->delete();
+        $assignment = Repo::stageAssignment()->build($this->submissionId, $this->group->id, $this->userId, false);
+        self::assertTrue((bool) $assignment->recommendOnly);
+    }
+
+    public function testDiscussionFormRejectsAnAuthorAsRecipient(): void
+    {
+        $otherUserId = (int) DB::table('users')->where('user_id', '<>', $this->userId)->value('user_id');
+        $authorGroup = UserGroup::withContextIds([$this->contextId])->withRoleIds([Role::ROLE_ID_AUTHOR])->first();
+        DB::table('stage_assignments')->insert([
+            'submission_id' => $this->submissionId, 'user_group_id' => $authorGroup->id,
+            'user_id' => $otherUserId, 'date_assigned' => date('Y-m-d H:i:s'),
+        ]);
+        $form = new \PKP\controllers\grid\queries\form\QueryForm(
+            Registry::get('request'),
+            \APP\core\Application::ASSOC_TYPE_SUBMISSION,
+            $this->submissionId,
+            3
+        );
+        $form->setData('users', [$this->userId, $otherUserId]);
+        $args = [$form, null];
+        (new \APP\plugins\generic\editorialAdvisor\classes\DiscussionHooks())->validate('queryform::validate', $args);
+        self::assertFalse($form->isValid());
+        self::assertSame(__('plugins.generic.editorialAdvisor.denied'), $form->getErrorsArray()['users']);
+    }
+
+    public function testReviewerAttachmentGridIsReadOnly(): void
+    {
+        $request = $this->request(['submissionId' => $this->submissionId, 'stageId' => 3]);
+        Registry::set('request', $request);
+        $component = 'grid.files.attachment.EditorReviewAttachmentsGridHandler';
+        $operation = 'fetchGrid';
+        $handler = null;
+        Hook::call('LoadComponentHandler', [&$component, &$operation, &$handler]);
+        self::assertFalse($handler->getCapabilities()->canAdd());
+        self::assertFalse($handler->getCapabilities()->canEdit());
+        self::assertFalse($handler->getCapabilities()->canDelete());
+    }
+
+    public function testExistingAuthorDiscussionRendersAsReadOnly(): void
+    {
+        $query = \PKP\query\Query::create([
+            'assocType' => \APP\core\Application::ASSOC_TYPE_SUBMISSION,
+            'assocId' => $this->submissionId, 'stageId' => 3, 'seq' => 1,
+        ]);
+        $authorGroup = UserGroup::withContextIds([$this->contextId])->withRoleIds([Role::ROLE_ID_AUTHOR])->first();
+        $authorId = (int) DB::table('users')->where('user_id', '<>', $this->userId)->value('user_id');
+        DB::table('stage_assignments')->insert([
+            'submission_id' => $this->submissionId, 'user_group_id' => $authorGroup->id,
+            'user_id' => $authorId, 'date_assigned' => date('Y-m-d H:i:s'),
+        ]);
+        foreach ([$authorId, $this->userId] as $userId) {
+            \PKP\query\QueryParticipant::create(['queryId' => $query->id, 'userId' => $userId]);
+        }
+        $manager = \APP\template\TemplateManager::getManager(Registry::get('request'));
+        $manager->assign([
+            'query' => $query, 'queryNotesGridHandlerName' => 'grid.queries.QueryNotesGridHandler',
+            'requestArgs' => ['submissionId' => $this->submissionId, 'stageId' => 3],
+        ]);
+        $html = $manager->fetch('controllers/grid/queries/readQuery.tpl');
+        self::assertStringContainsString('data-cy="advisor-readonly-discussion"', $html);
+        self::assertStringNotContainsString('add_note', $html);
+    }
+
+    public function testUnrelatedQueryCannotMaskTheStageOfANotification(): void
+    {
+        $query = \PKP\query\Query::create([
+            'assocType' => \APP\core\Application::ASSOC_TYPE_SUBMISSION,
+            'assocId' => $this->submissionId, 'stageId' => 2, 'seq' => 1,
+        ]);
+        $request = $this->request(['submissionId' => $this->submissionId, 'stageId' => 3, 'queryId' => $query->id]);
+        $policy = new RequestPolicy($request, 'grid.users.stageParticipant.StageParticipantGridHandler', 'sendNotification');
+        self::assertSame(AuthorizationPolicy::AUTHORIZATION_DENY, $policy->effect());
+    }
+
+    public function testChangingAFileIntoAReviewerAttachmentIsDenied(): void
+    {
+        $reviewRoundId = DB::table('review_rounds')->insertGetId([
+            'submission_id' => $this->submissionId, 'stage_id' => 3, 'round' => 1,
+        ]);
+        $review = (array) DB::table('review_assignments')->first();
+        unset($review['review_id']);
+        $review['submission_id'] = $this->submissionId;
+        $review['stage_id'] = 3;
+        $review['review_round_id'] = $reviewRoundId;
+        $reviewId = DB::table('review_assignments')->insertGetId($review);
+        $file = (array) DB::table('submission_files')->first();
+        unset($file['submission_file_id']);
+        $file['submission_id'] = $this->submissionId;
+        $file['file_stage'] = \PKP\submissionFile\SubmissionFile::SUBMISSION_FILE_SUBMISSION;
+        $fileId = DB::table('submission_files')->insertGetId($file);
+        $params = [
+            'submissionId' => $this->submissionId, 'submissionFileId' => $fileId,
+            'fileStage' => \PKP\submissionFile\SubmissionFile::SUBMISSION_FILE_REVIEW_ATTACHMENT,
+            'assocType' => \APP\core\Application::ASSOC_TYPE_REVIEW_ASSIGNMENT, 'assocId' => $reviewId,
+        ];
+        $controller = $this->getMockBuilder(\PKP\API\v1\submissions\PKPSubmissionFileController::class)
+            ->onlyMethods(['getParameter'])->getMock();
+        $queryParams = $params;
+        $queryParams['fileStage'] = \PKP\submissionFile\SubmissionFile::SUBMISSION_FILE_SUBMISSION;
+        $controller->method('getParameter')->willReturnCallback(fn ($name, $default = null) => $queryParams[$name] ?? $default);
+        $previousHttp = app(\Illuminate\Http\Request::class);
+        app()->instance(\Illuminate\Http\Request::class, \Illuminate\Http\Request::create('/submissions/' . $this->submissionId . '/files/' . $fileId . '?fileStage=2', 'PUT', $params));
+        try {
+            $policy = new RequestPolicy($this->request($params), controller: $controller);
+            self::assertSame(AuthorizationPolicy::AUTHORIZATION_DENY, $policy->effect());
+        } finally {
+            app()->instance(\Illuminate\Http\Request::class, $previousHttp);
+        }
     }
 
 }

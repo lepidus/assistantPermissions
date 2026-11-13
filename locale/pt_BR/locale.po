@@ -35,3 +35,24 @@ msgstr "Recomendação registrada."
 
 msgid "plugins.generic.editorialAdvisor.failed"
 msgstr "Não foi possível registrar a recomendação."
+
+msgid "plugins.generic.editorialAdvisor.readOnlyDiscussion"
+msgstr "Esta discussão inclui autor ou parecerista e está disponível apenas para leitura."
+
+msgid "plugins.generic.editorialAdvisor.reviewerRecommendation.1"
+msgstr "Aceitar"
+
+msgid "plugins.generic.editorialAdvisor.reviewerRecommendation.2"
+msgstr "Revisões necessárias"
+
+msgid "plugins.generic.editorialAdvisor.reviewerRecommendation.3"
+msgstr "Submeter novamente para avaliação"
+
+msgid "plugins.generic.editorialAdvisor.reviewerRecommendation.4"
+msgstr "Submeter a outra editora"
+
+msgid "plugins.generic.editorialAdvisor.reviewerRecommendation.5"
+msgstr "Rejeitar"
+
+msgid "plugins.generic.editorialAdvisor.reviewerRecommendation.6"
+msgstr "Ver comentários"

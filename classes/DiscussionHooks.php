@@ -25,8 +25,8 @@ class DiscussionHooks
         }
         if (array_intersect($access->forbiddenParticipants((int) $query->assocId), array_map('intval', $participants))) {
             $form->addError('users', __('plugins.generic.editorialAdvisor.denied'));
-            $args[1] = false;
-            return true;
+            // Continue the normal form lifecycle so OMP also displays its error notification.
+            return false;
         }
         return false;
     }

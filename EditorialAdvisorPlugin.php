@@ -25,6 +25,8 @@ use PKP\security\Role;
 
 class EditorialAdvisorPlugin extends GenericPlugin
 {
+    private ?Access $access = null;
+    private array $readOnlyQueries = [];
     public function register($category, $path, $mainContextId = null): bool
     {
         $success = parent::register($category, $path, $mainContextId);
@@ -36,6 +38,12 @@ class EditorialAdvisorPlugin extends GenericPlugin
                 'type' => 'boolean', 'origin' => 'setting', 'validation' => ['boolean'],
             ];
             return false;
+        });
+        \PKP\stageAssignment\StageAssignment::saving(function ($assignment) {
+            $group = \PKP\userGroup\UserGroup::findById((int) $assignment->userGroupId);
+            if ($group && $group->roleId == Role::ROLE_ID_ASSISTANT && $this->getEnabled($group->contextId)) {
+                $assignment->recommendOnly = (bool) $group->recommendOnly;
+            }
         });
         Hook::add('LoadComponentHandler', $this->loadComponent(...), Hook::SEQUENCE_LAST);
         Hook::add('APIHandler::endpoints::plugin', function (string $name, APIRouter $router): bool {
@@ -84,6 +92,20 @@ class EditorialAdvisorPlugin extends GenericPlugin
         if (!$handler || !method_exists($handler, 'addPolicy')) {
             return false;
         }
+        $request = Application::get()->getRequest();
+        if ($component === 'grid.files.attachment.EditorReviewAttachmentsGridHandler'
+            && $request->getContext() && $request->getUser()
+            && (new Access())->restrictions(
+                $request->getContext()->getId(),
+                $request->getUser()->getId(),
+                (int) $request->getUserVar('submissionId'),
+                (int) $request->getUserVar('stageId')
+            )->recommendOnly) {
+            $handler->getCapabilities()->setCanAdd(false);
+            $handler->getCapabilities()->setCanEdit(false);
+            $handler->getCapabilities()->setCanDelete(false);
+            $handler->getCapabilities()->setCanManage(false);
+        }
         $handler->addPolicy(new RequestPolicy(Application::get()->getRequest(), $component, $operation));
         $args[2] = $handler;
         return true;
@@ -102,7 +124,25 @@ class EditorialAdvisorPlugin extends GenericPlugin
             $review = $manager->getTemplateVars('reviewAssignment');
             if ($review && $request->getContext() && $request->getUser()
                 && (new Access())->restrictions($request->getContext()->getId(), $request->getUser()->getId(), $review->getSubmissionId(), $review->getStageId())->recommendOnly) {
+                $recommendation = (int) $review->getRecommendation();
+                $manager->assign('advisorReviewerRecommendation', $recommendation >= 1 && $recommendation <= 6
+                    ? __('plugins.generic.editorialAdvisor.reviewerRecommendation.' . $recommendation) : '');
                 $args[4] = $manager->fetch($this->getTemplateResource('readReview.tpl'));
+                return true;
+            }
+        }
+        if ($template === 'controllers/grid/gridRow.tpl') {
+            $row = $manager->getTemplateVars('row');
+            if ($row instanceof \PKP\controllers\grid\queries\QueryNotesGridRow && $this->isReadOnlyQuery($row->getQuery())) {
+                $row->_actions = [];
+            }
+        }
+        if ($template === 'controllers/grid/queries/readQuery.tpl') {
+            $query = $manager->getTemplateVars('query');
+            if ($query && $this->isReadOnlyQuery($query)) {
+                $participants = \PKP\query\QueryParticipant::withQueryId($query->id)->get();
+                $manager->assign('advisorQueryParticipants', $participants->pluck('user')->filter()->all());
+                $args[4] = $manager->fetch($this->getTemplateResource('readQuery.tpl'));
                 return true;
             }
         }
@@ -119,17 +159,32 @@ class EditorialAdvisorPlugin extends GenericPlugin
         return false;
     }
 
+    private function isReadOnlyQuery(\PKP\query\Query $query): bool
+    {
+        if (array_key_exists($query->id, $this->readOnlyQueries)) {
+            return $this->readOnlyQueries[$query->id];
+        }
+        $request = Application::get()->getRequest();
+        $access = $this->access ??= new Access();
+        return $this->readOnlyQueries[$query->id] = $request->getContext() && $request->getUser()
+            && $access->restrictions($request->getContext()->getId(), $request->getUser()->getId(), (int) $query->assocId, (int) $query->stageId)->blockContact
+            && (bool) array_intersect(
+                $access->forbiddenParticipants((int) $query->assocId),
+                \PKP\query\QueryParticipant::withQueryId($query->id)->pluck('user_id')->all()
+            );
+    }
+
     public function submissionPermissions(array $output, Submission $submission): array
     {
         $request = Application::get()->getRequest();
         if (!$request->getContext() || !$request->getUser()) {
             return $output;
         }
-        $access = new Access();
+        $access = $this->access ??= new Access();
         $contextId = $request->getContext()->getId();
         $userId = $request->getUser()->getId();
-        $rules = $access->restrictions($contextId, $userId, $submission->getId());
         $stageId = (int) $submission->getData('stageId');
+        $rules = $access->restrictions($contextId, $userId, $submission->getId(), $stageId);
         $options = [];
         if ($rules->recommendOnly && $access->canRecommend($contextId, $userId, $submission->getId(), $stageId)
             && (int) $submission->getData('status') === Submission::STATUS_QUEUED) {

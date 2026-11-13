@@ -8,16 +8,15 @@
 namespace APP\plugins\generic\editorialAdvisor;
 
 use APP\core\Application;
-use APP\facades\Repo;
 use APP\plugins\generic\editorialAdvisor\classes\Access;
+use APP\plugins\generic\editorialAdvisor\classes\AdvisorDecisionHandler;
+use APP\plugins\generic\editorialAdvisor\classes\AdvisorSubmissionController;
 use APP\plugins\generic\editorialAdvisor\classes\AdvisorUserGroupGridHandler;
 use APP\plugins\generic\editorialAdvisor\classes\DiscussionHooks;
-use APP\plugins\generic\editorialAdvisor\classes\RecommendationController;
 use APP\plugins\generic\editorialAdvisor\classes\RequestPolicy;
 use APP\submission\maps\Schema;
 use APP\submission\Submission;
 use APP\template\TemplateManager;
-use Illuminate\Support\Facades\DB;
 use PKP\core\APIRouter;
 use PKP\plugins\GenericPlugin;
 use PKP\plugins\Hook;
@@ -45,11 +44,32 @@ class EditorialAdvisorPlugin extends GenericPlugin
                 $assignment->recommendOnly = (bool) $group->recommendOnly;
             }
         });
+        Hook::add('LoadHandler', function ($name, $args) {
+            if ($args[0] !== 'decision' || $args[1] !== 'record' || $args[3]) {
+                return false;
+            }
+            $request = Application::get()->getRequest();
+            $submissionId = (int) ($request->getRouter()->getRequestedArgs($request)[0] ?? 0);
+            if ($request->getContext() && $request->getUser()
+                && (new Access())->restrictions($request->getContext()->getId(), $request->getUser()->getId(), $submissionId)->recommendOnly) {
+                $args[3] = new AdvisorDecisionHandler();
+                return true;
+            }
+            return false;
+        });
         Hook::add('LoadComponentHandler', $this->loadComponent(...), Hook::SEQUENCE_LAST);
         Hook::add('APIHandler::endpoints::plugin', function (string $name, APIRouter $router): bool {
-            $router->registerPluginApiControllers([new RecommendationController()]);
+            $request = Application::get()->getRequest();
+            if (app(\Illuminate\Http\Request::class)->method() === 'POST'
+                && preg_match('~/submissions/(\d+)/decisions/?$~', $request->getRequestPath(), $match)
+                && $request->getContext() && $request->getUser()
+                && (new Access())->restrictions($request->getContext()->getId(), $request->getUser()->getId(), (int) $match[1])->recommendOnly) {
+                $router->registerPluginApiControllers([new AdvisorSubmissionController()]);
+            }
             Hook::add('APIHandler::endpoints::' . $router->getEntity(), function ($name, $controller, $handler) {
-                $controller->addPolicy(new RequestPolicy(Application::get()->getRequest(), controller: $controller));
+                if (!$controller instanceof AdvisorSubmissionController) {
+                    $controller->addPolicy(new RequestPolicy(Application::get()->getRequest(), controller: $controller));
+                }
                 return false;
             });
             return false;
@@ -61,6 +81,17 @@ class EditorialAdvisorPlugin extends GenericPlugin
         app('maps')->extend(Schema::class, $this->submissionPermissions(...));
         Hook::add('TemplateManager::display', function ($name, $args) {
             $request = Application::get()->getRequest();
+            if ($args[1] === 'decision/record.tpl' && $request->getRouter()->getHandler() instanceof AdvisorDecisionHandler) {
+                $steps = $args[0]->getState('steps') ?? [];
+                foreach ($steps as $step) {
+                    if ($step->type === 'email') {
+                        $step->attachers = [];
+                    }
+                }
+                $args[0]->setState(['steps' => $steps]);
+                $args[0]->addStyleSheet('advisorRecommendation', $request->getBaseUrl() . '/' . $this->getPluginPath()
+                    . '/public/styles/nativeRecommendation.css', ['contexts' => ['backend']]);
+            }
             $args[0]->addJavaScript(
                 'editorialAdvisor',
                 $request->getBaseUrl() . '/' . $this->getPluginPath() . '/public/build/editorialAdvisor.js',
@@ -185,27 +216,26 @@ class EditorialAdvisorPlugin extends GenericPlugin
         $userId = $request->getUser()->getId();
         $stageId = (int) $submission->getData('stageId');
         $rules = $access->restrictions($contextId, $userId, $submission->getId(), $stageId);
-        $options = [];
-        if ($rules->recommendOnly && $access->canRecommend($contextId, $userId, $submission->getId(), $stageId)
-            && (int) $submission->getData('status') === Submission::STATUS_QUEUED) {
-            foreach (Repo::decision()->getDecisionTypes() as $type) {
-                if (Repo::decision()->isRecommendation($type->getDecision()) && $type->getStageId() === $stageId) {
-                    $options[] = ['value' => $type->getDecision(), 'label' => $type->getLabel()];
-                }
-            }
-        }
         $stages = [];
         foreach ([1, 2, 3, 4, 5] as $id) {
             $stageRules = $access->restrictions($contextId, $userId, $submission->getId(), $id);
             $stages[$id] = ['recommendOnly' => $stageRules->recommendOnly, 'blockContact' => $stageRules->blockContact];
         }
+        foreach ($output['stages'] ?? [] as $key => $stage) {
+            $id = (int) $stage['id'];
+            if ($stages[$id]['recommendOnly'] ?? false) {
+                $output['stages'][$key]['currentUserCanRecommendOnly'] = $access->canRecommend(
+                    $contextId,
+                    $userId,
+                    $submission->getId(),
+                    $id
+                );
+            }
+        }
         $output['editorialAdvisor'] = [
             'stages' => $stages,
             'recommendOnly' => $rules->recommendOnly,
             'blockContact' => $rules->blockContact,
-            'recommendations' => $options,
-            'reviewRoundId' => (int) DB::table('review_rounds')->where('submission_id', $submission->getId())
-                ->where('stage_id', $stageId)->orderByDesc('round')->value('review_round_id'),
         ];
         return $output;
     }

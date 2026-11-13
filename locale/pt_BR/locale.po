@@ -15,26 +15,12 @@ msgstr "Impedir comunicação com autores e pareceristas (manter suas identidade
 msgid "plugins.generic.editorialAdvisor.denied"
 msgstr "Esta ação não é permitida para este papel editorial."
 
-msgid "plugins.generic.editorialAdvisor.invalidRecommendation"
-msgstr "Selecione uma recomendação para a etapa e a rodada de avaliação atuais."
 
-msgid "plugins.generic.editorialAdvisor.noEditors"
-msgstr "A recomendação exige um editor designado que possa decidir e não seja autor ou parecerista."
 
-msgid "plugins.generic.editorialAdvisor.recommend"
-msgstr "Recomendar uma decisão ao editor"
 
-msgid "plugins.generic.editorialAdvisor.recommendation"
-msgstr "Recomendação"
 
-msgid "plugins.generic.editorialAdvisor.comment"
-msgstr "Comentários para a equipe editorial"
 
-msgid "plugins.generic.editorialAdvisor.saved"
-msgstr "Recomendação registrada."
 
-msgid "plugins.generic.editorialAdvisor.failed"
-msgstr "Não foi possível registrar a recomendação."
 
 msgid "plugins.generic.editorialAdvisor.readOnlyDiscussion"
 msgstr "Esta discussão inclui autor ou parecerista e está disponível apenas para leitura."

@@ -2,12 +2,5 @@
   "plugins.generic.editorialAdvisor.name",
   "plugins.generic.editorialAdvisor.description",
   "plugins.generic.editorialAdvisor.blockContact",
-  "plugins.generic.editorialAdvisor.denied",
-  "plugins.generic.editorialAdvisor.invalidRecommendation",
-  "plugins.generic.editorialAdvisor.noEditors",
-  "plugins.generic.editorialAdvisor.recommend",
-  "plugins.generic.editorialAdvisor.recommendation",
-  "plugins.generic.editorialAdvisor.comment",
-  "plugins.generic.editorialAdvisor.saved",
-  "plugins.generic.editorialAdvisor.failed"
+  "plugins.generic.editorialAdvisor.denied"
 ]

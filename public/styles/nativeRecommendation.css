@@ -1,0 +1,4 @@
+/* Loaded only for the Assistant recommendation page. Recipients stay fixed; no CC/BCC. */
+.app__page--decision .composer__recipients__wrapper button {
+    display: none;
+}

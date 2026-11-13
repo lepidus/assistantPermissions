@@ -49,15 +49,12 @@ test('completed reviews retain the OMP read-only details action', () => {
     const actions = [{name: 'reviewerReviewDetails'}, {name: 'reviewerThankReviewer'}];
     assert.deepEqual(hooks['reviewerManager.getItemActions'](actions), actions.slice(0, 1));
 });
-test('recommendation form is absent on historical rounds', () => {
-    const submission = {id: 12, stageId: 3, editorialAdvisor: {
-        recommendOnly: true, recommendations: [{value: 9, label: 'Accept'}], reviewRoundId: 20,
-    }};
+test('advisor preserves native recommendation controls while hiding final decisions', () => {
+    const submission = {stageId: 3, editorialAdvisor: {recommendOnly: true}};
     const hooks = setup(submission);
-    const args = {submission, selectedMenuState: {primaryMenuItem: 'workflow', stageId: 3, reviewRoundId: 19}};
-    assert.equal(hooks['workflow.getPrimaryItems']([], args).length, 0);
-    args.selectedMenuState.reviewRoundId = 20;
-    assert.equal(hooks['workflow.getPrimaryItems']([], args).length, 1);
+    const items = [{component: 'WorkflowRecommendOnlyControls'}, {component: 'WorkflowActionButton'}];
+    assert.deepEqual(hooks['workflow.getActionItems'](items, {submission, selectedStageId: 3}), items.slice(0, 1));
+    assert.equal(hooks['workflow.getActionItems']([], {submission, selectedStageId: 3}).length, 0);
 });
 test('a restriction in another stage does not hide current-stage actions', () => {
     const submission = {stageId: 3, editorialAdvisor: {recommendOnly: true,

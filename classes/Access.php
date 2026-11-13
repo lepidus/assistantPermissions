@@ -52,10 +52,11 @@ class Access
         }
         $groupIds = UserGroup::withContextIds([$contextId])->withRoleIds([Role::ROLE_ID_ASSISTANT])
             ->isRecommendOnly(true)
+            ->whereHas('userGroupStages', fn ($q) => $q->where('stage_id', $stageId))
             ->whereHas('userUserGroups', fn ($q) => $q->withActive()->withUserId($userId))
             ->pluck('user_group_id')->all();
         return StageAssignment::withSubmissionIds([$submissionId])->withStageIds([$stageId])
-            ->withUserId($userId)->whereIn('user_group_id', $groupIds)->exists();
+            ->withUserId($userId)->withRecommendOnly(true)->whereIn('user_group_id', $groupIds)->exists();
     }
 
     /** Authors and reviewers are excluded even when they also hold an editorial role. */

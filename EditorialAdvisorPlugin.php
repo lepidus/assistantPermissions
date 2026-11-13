@@ -12,7 +12,6 @@ use APP\facades\Repo;
 use APP\plugins\generic\editorialAdvisor\classes\Access;
 use APP\plugins\generic\editorialAdvisor\classes\AdvisorUserGroupGridHandler;
 use APP\plugins\generic\editorialAdvisor\classes\DiscussionHooks;
-use APP\plugins\generic\editorialAdvisor\classes\PendingFileMetadata;
 use APP\plugins\generic\editorialAdvisor\classes\RecommendationController;
 use APP\plugins\generic\editorialAdvisor\classes\RequestPolicy;
 use APP\submission\maps\Schema;
@@ -45,37 +44,6 @@ class EditorialAdvisorPlugin extends GenericPlugin
             if ($group && $group->roleId == Role::ROLE_ID_ASSISTANT && $this->getEnabled($group->contextId)) {
                 $assignment->recommendOnly = (bool) $group->recommendOnly;
             }
-        });
-        Hook::add('SubmissionFile::add', function ($name, $args) {
-            $request = Application::get()->getRequest();
-            $router = $request->getRouter();
-            $file = $args[0];
-            if ($router instanceof \PKP\core\PKPComponentRouter
-                && strtolower($router->getRequestedComponent($request)) === 'wizard.fileupload.fileuploadwizardhandler'
-                && strtolower($router->getRequestedOp($request)) === 'uploadfile'
-                && $request->getUser()?->getId() === (int) $file->getData('uploaderUserId')) {
-                (new PendingFileMetadata($request->getSession()->getId(), $request->getUser()->getId()))->remember($file->getId());
-            }
-            return false;
-        });
-        Hook::add('submissionfilesmetadataform::validate', function ($name, $args) {
-            $request = Application::get()->getRequest();
-            $form = $args[0];
-            $file = $form->getSubmissionFile();
-            $user = $request->getUser();
-            if ($user && $form->isValid()) {
-                $restricted = (new Access())->restrictions(
-                    $request->getContext()->getId(),
-                    $user->getId(),
-                    $file->getData('submissionId'),
-                    Repo::submissionFile()->getWorkflowStageId($file)
-                )->recommendOnly;
-                $consumed = (new PendingFileMetadata($request->getSession()->getId(), $user->getId()))->consume($file->getId());
-                if ($restricted && !$consumed) {
-                    $form->addError('name', __('plugins.generic.editorialAdvisor.denied'));
-                }
-            }
-            return false;
         });
         Hook::add('LoadComponentHandler', $this->loadComponent(...), Hook::SEQUENCE_LAST);
         Hook::add('APIHandler::endpoints::plugin', function (string $name, APIRouter $router): bool {

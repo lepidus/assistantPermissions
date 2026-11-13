@@ -34,10 +34,12 @@ class Restrictions
             // Internal communication remains available through discussions.
             return false;
         }
-        if ($this->recommendOnly && str_contains($component, 'file')
-            && (str_contains($operation, 'delete') || str_contains($operation, 'remove')
-                || in_array($operation, ['editmetadata', 'editmetadatatab', 'savemetadata'], true))) {
-            return false;
+        if ($this->recommendOnly && str_contains($component, 'file')) {
+            return in_array($operation, [
+                'fetchgrid', 'fetchrow', 'fetch', 'viewfile', 'downloadfile', 'downloadallfiles',
+                'downloadlibraryfile', 'recorddownload', 'enablelinkaction',
+                'viewinformationcenter', 'viewhistory', 'viewnotes', 'listnotes',
+            ], true);
         }
         if ($this->recommendOnly && (str_contains($component, 'decision')
             || str_contains($component, 'reviewround'))) {
@@ -52,8 +54,7 @@ class Restrictions
             return true;
         }
         $path = strtolower($path);
-        if ($this->recommendOnly && in_array(strtoupper($method), ['PUT', 'PATCH'], true)
-            && preg_match('~(?:^|/)submissions/\d+/files(?:/|$)~', $path)) {
+        if ($this->recommendOnly && preg_match('~(?:^|/)submissions/\d+/files(?:/|$)~', $path)) {
             return false;
         }
         if ($this->blockContact && preg_match('~(?:^|/)(_?emails?|messages?|reviews?|reviewers?|reviewassignments)(?:/|$)~', $path)) {

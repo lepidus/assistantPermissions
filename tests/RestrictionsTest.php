@@ -67,4 +67,24 @@ class RestrictionsTest extends TestCase
         self::assertTrue((new Restrictions(false, true))->allowsApi('PUT', 'submissions/12/files/3'));
     }
 
+    public function testRestrictedFilesCannotBeUploadedSelectedOrCopied(): void
+    {
+        $rules = new Restrictions(true, false);
+        foreach (['startWizard', 'displayFileUploadForm', 'uploadFile', 'finishFileSubmission'] as $op) {
+            self::assertFalse($rules->allowsComponent('wizard.fileUpload.FileUploadWizardHandler', $op), $op);
+        }
+        self::assertFalse($rules->allowsComponent('grid.files.review.EditorReviewFilesGridHandler', 'selectFiles'));
+        self::assertFalse($rules->allowsComponent('grid.files.review.ManageReviewFilesGridHandler', 'updateReviewFiles'));
+        foreach (['POST', 'PUT', 'PATCH', 'DELETE'] as $method) {
+            self::assertFalse($rules->allowsApi($method, 'submissions/12/files'));
+            self::assertFalse($rules->allowsApi($method, 'submissions/12/files/3/copy'));
+        }
+        self::assertTrue($rules->allowsApi('GET', 'submissions/12/files'));
+        foreach (['downloadAllFiles', 'downloadLibraryFile', 'recordDownload', 'enableLinkAction'] as $op) {
+            self::assertTrue($rules->allowsComponent('api.file.FileApiHandler', $op));
+        }
+        self::assertTrue((new Restrictions(false, true))->allowsComponent('wizard.fileUpload.FileUploadWizardHandler', 'uploadFile'));
+        self::assertTrue((new Restrictions(false, true))->allowsApi('POST', 'submissions/12/files'));
+    }
+
 }

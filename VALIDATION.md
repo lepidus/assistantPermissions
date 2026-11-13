@@ -33,3 +33,19 @@ Não foram executados Cypress, PostgreSQL, outras versões/aplicações PKP ou u
 As revisões independentes de segurança e de arquitetura foram realizadas sobre o código e os
 fluxos afetados. Os achados foram corrigidos e submetidos a nova conferência; não ficaram achados
 concretos pendentes no recorte revisado. As regressões verificadas estão incluídas nos testes acima.
+
+## Correção das ações de arquivos — issue 974
+
+- Extensão dos seis stores `fileManager_<namespace>` do OMP 3.5, filtrando o menu
+  para `fileSeeNotes` (Mais informações); perfis e etapas sem restrição preservam as ações nativas.
+- Edição de metadados, substituição por `revisedFileId`, PUT/PATCH e exclusão de arquivos
+  existentes são recusados no servidor. Nenhum arquivo do núcleo foi alterado.
+- Novo upload mantém uma autorização inicial vinculada ao arquivo, sessão e usuário,
+  armazenada nas configurações nativas do arquivo, sem migração de esquema. O formulário válido
+  consome essa autorização por DELETE condicional antes da escrita; uma segunda gravação falha.
+- Navegador local: conselheiro974, submissão 2, etapa de avaliação externa. Menu do chapter4.pdf
+  apresentou zero ações Edit/Delete e uma More Information. Chamadas diretas de edição de
+  metadados e PUT foram recusadas. Upload sintético concluiu a etapa File Added.
+- Limitação observada separadamente: a janela nativa Mais informações apresentou erro de acesso
+  no histórico e erro de classe `Note` não encontrada na aba de notas. A ação é mantida pelo plugin;
+  o funcionamento dessas abas não foi corrigido nesta etapa.

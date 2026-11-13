@@ -10,7 +10,9 @@ crie ou edite qualquer papel de nível **Assistant**. O nome do papel é livre.
 
 - **Apenas recomendar uma decisão:** habilita recomendações ao editor nas etapas de avaliação interna e
   externa, usando os tipos nativos do OMP. Impede decisões finais, gestão de avaliações/avaliadores,
-  alteração de anexos do parecerista e exclusão de arquivos. A discussão da recomendação inclui somente
+  alteração de anexos do parecerista e edição, substituição ou exclusão de arquivos existentes.
+  Nas listas de arquivos, mantém apenas a ação **Mais informações**, além do download.
+  O envio de novos arquivos e a gravação inicial de seus metadados continuam disponíveis. A discussão da recomendação inclui somente
   o conselheiro e os editores decisores elegíveis.
 - **Impedir comunicação com autores e pareceristas:** mantém suas identidades visíveis, mas impede
   notificações diretas, seleção como destinatários de discussões e respostas em discussões que já

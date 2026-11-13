@@ -88,3 +88,25 @@ test('file restrictions follow the displayed stage', () => {
     const filter = hooks['fileManager_EDITOR_REVIEW_FILES.getItemActions'] || (items => items);
     assert.deepEqual(filter(actions), actions);
 });
+
+test('restricted file managers hide upload and selection', () => {
+    const hooks = setup({stageId: 3, editorialAdvisor: {recommendOnly: true}});
+    const actions = [{props: {action: 'fileUpload'}}, {props: {action: 'fileSelectUpload'}}];
+    for (const ns of fileManagerNamespaces) {
+        const filter = hooks[`fileManager_${ns}.getTopItems`] || (items => items);
+        assert.equal(filter(actions).length, 0, ns);
+    }
+});
+test('file upload actions remain available outside the restricted stage and for no-contact alone', () => {
+    const actions = [{props: {action: 'fileUpload'}}, {props: {action: 'fileSelectUpload'}}];
+    for (const submission of [
+        {stageId: 3, editorialAdvisor: {blockContact: true}},
+        {stageId: 3, editorialAdvisor: {recommendOnly: true, stages: {2: {recommendOnly: false}}}},
+    ]) {
+        const hooks = setup(submission, 2);
+        for (const ns of fileManagerNamespaces) {
+            const filter = hooks[`fileManager_${ns}.getTopItems`] || (items => items);
+            assert.deepEqual(filter(actions), actions);
+        }
+    }
+});

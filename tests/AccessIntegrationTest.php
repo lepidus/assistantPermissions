@@ -315,4 +315,18 @@ class AccessIntegrationTest extends TestCase
         }
     }
 
+    public function testUploadCannotReplaceARestrictedFileEvenWithASpoofedStage(): void
+    {
+        $file = (array) DB::table('submission_files')->first();
+        unset($file['submission_file_id']);
+        $file['submission_id'] = $this->submissionId;
+        $file['file_stage'] = \PKP\submissionFile\SubmissionFile::SUBMISSION_FILE_REVIEW_REVISION;
+        $fileId = DB::table('submission_files')->insertGetId($file);
+        $request = $this->request([
+            'submissionId' => $this->submissionId, 'stageId' => 2, 'revisedFileId' => $fileId,
+        ]);
+        $policy = new RequestPolicy($request, 'wizard.fileUpload.FileUploadWizardHandler', 'uploadFile');
+        self::assertSame(AuthorizationPolicy::AUTHORIZATION_DENY, $policy->effect());
+    }
+
 }

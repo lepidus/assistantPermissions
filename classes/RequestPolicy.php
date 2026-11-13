@@ -38,7 +38,16 @@ class RequestPolicy extends AuthorizationPolicy
                 if (!$rules->allowsApi($http->method(), $http->path())) {
                     return self::AUTHORIZATION_DENY;
                 }
-            } elseif (!$rules->allowsComponent($this->component, $this->operation)) {
+            } elseif (!$rules->allowsComponent($this->component, $this->operation)
+                && !(new PendingFileMetadata($this->request->getSession()->getId(), $user->getId()))->allows(
+                    $this->component,
+                    $this->operation,
+                    (int) $this->parameter('submissionFileId')
+                )) {
+                return self::AUTHORIZATION_DENY;
+            }
+            if ($rules->recommendOnly && strtolower($this->operation) === 'uploadfile'
+                && (int) $this->parameter('revisedFileId')) {
                 return self::AUTHORIZATION_DENY;
             }
             if ($rules->recommendOnly && $this->modifiesReviewerAttachment()) {
@@ -66,7 +75,10 @@ class RequestPolicy extends AuthorizationPolicy
             return false;
         }
         $fileStages = [(int) $this->parameter('fileStage')];
-        if ($id = (int) $this->parameter('submissionFileId')) {
+        foreach (['submissionFileId', 'revisedFileId'] as $fileParameter) {
+            if (!($id = (int) $this->parameter($fileParameter))) {
+                continue;
+            }
             $file = \APP\facades\Repo::submissionFile()->get($id);
             $fileStages[] = (int) $file?->getData('fileStage');
         }
@@ -110,7 +122,10 @@ class RequestPolicy extends AuthorizationPolicy
                 }
             }
         }
-        if ($id = (int) $this->parameter('submissionFileId')) {
+        foreach (['submissionFileId', 'revisedFileId'] as $fileParameter) {
+            if (!($id = (int) $this->parameter($fileParameter))) {
+                continue;
+            }
             $file = \APP\facades\Repo::submissionFile()->get($id);
             if ($file) {
                 $stageId = \APP\facades\Repo::submissionFile()->getWorkflowStageId($file);

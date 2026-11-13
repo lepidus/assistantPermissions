@@ -53,4 +53,18 @@ class RestrictionsTest extends TestCase
         self::assertFalse($rules->allowsApi('POST', 'submissions/12/emails'));
         self::assertTrue($rules->allowsApi('GET', 'submissions/12/emails'));
     }
+    public function testRestrictedFilesCanOnlyBeReadThroughComponentsAndApi(): void
+    {
+        $rules = new Restrictions(true, false);
+        foreach (['editMetadata', 'editMetadataTab', 'saveMetadata', 'deleteFile'] as $op) {
+            self::assertFalse($rules->allowsComponent('api.file.ManageFileApiHandler', $op), $op);
+        }
+        self::assertTrue($rules->allowsComponent('informationCenter.FileInformationCenterHandler', 'viewInformationCenter'));
+        self::assertTrue($rules->allowsComponent('api.file.FileApiHandler', 'downloadFile'));
+        self::assertFalse($rules->allowsApi('PUT', 'submissions/12/files/3'));
+        self::assertFalse($rules->allowsApi('PATCH', 'submissions/12/files/3'));
+        self::assertTrue($rules->allowsApi('GET', 'submissions/12/files/3'));
+        self::assertTrue((new Restrictions(false, true))->allowsApi('PUT', 'submissions/12/files/3'));
+    }
+
 }

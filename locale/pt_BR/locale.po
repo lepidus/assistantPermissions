@@ -42,3 +42,6 @@ msgstr "Rejeitar"
 
 msgid "plugins.generic.editorialAdvisor.reviewerRecommendation.6"
 msgstr "Ver comentários"
+
+msgid "plugins.generic.editorialAdvisor.restrictFiles"
+msgstr "Restringir arquivos a download e Mais informações"

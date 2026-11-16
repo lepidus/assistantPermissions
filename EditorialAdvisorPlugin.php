@@ -33,9 +33,11 @@ class EditorialAdvisorPlugin extends GenericPlugin
             return $success;
         }
         Hook::add('Schema::get::userGroup', function ($name, $args) {
-            $args[0]->properties->{Access::BLOCK_CONTACT} = (object) [
-                'type' => 'boolean', 'origin' => 'setting', 'validation' => ['boolean'],
-            ];
+            foreach ([Access::BLOCK_CONTACT, Access::RESTRICT_FILES] as $option) {
+                $args[0]->properties->{$option} = (object) [
+                    'type' => 'boolean', 'origin' => 'setting', 'validation' => ['boolean'],
+                ];
+            }
             return false;
         });
         \PKP\stageAssignment\StageAssignment::saving(function ($assignment) {
@@ -84,7 +86,11 @@ class EditorialAdvisorPlugin extends GenericPlugin
             if ($args[1] === 'decision/record.tpl' && $request->getRouter()->getHandler() instanceof AdvisorDecisionHandler) {
                 $steps = $args[0]->getState('steps') ?? [];
                 foreach ($steps as $step) {
-                    if ($step->type === 'email') {
+                    if ($step->type === 'email' && (new Access())->restrictions(
+                        $request->getContext()->getId(),
+                        $request->getUser()->getId(),
+                        (int) ($request->getRouter()->getRequestedArgs($request)[0] ?? 0)
+                    )->restrictFiles) {
                         $step->attachers = [];
                     }
                 }
@@ -133,7 +139,7 @@ class EditorialAdvisorPlugin extends GenericPlugin
                 $request->getUser()->getId(),
                 (int) $request->getUserVar('submissionId'),
                 (int) $request->getUserVar('stageId')
-            )->recommendOnly) {
+            )->restrictFiles) {
             $handler->getCapabilities()->setCanAdd(false);
             $handler->getCapabilities()->setCanEdit(false);
             $handler->getCapabilities()->setCanDelete(false);
@@ -223,6 +229,7 @@ class EditorialAdvisorPlugin extends GenericPlugin
             $stageRules = $access->restrictions($contextId, $userId, $submission->getId(), $id);
             $stages[$id] = [
                 'recommendOnly' => $stageRules->recommendOnly, 'blockContact' => $stageRules->blockContact,
+                'restrictFiles' => $stageRules->restrictFiles,
                 'notifyParticipantIds' => $stageRules->blockContact ? $access->notificationRecipients($submission->getId(), $id) : [],
             ];
         }
@@ -241,6 +248,7 @@ class EditorialAdvisorPlugin extends GenericPlugin
             'stages' => $stages,
             'recommendOnly' => $rules->recommendOnly,
             'blockContact' => $rules->blockContact,
+            'restrictFiles' => $rules->restrictFiles,
             'notifyParticipantIds' => $stages[$stageId]['notifyParticipantIds'] ?? [],
         ];
         return $output;

@@ -42,8 +42,8 @@
         'COPYEDITED_FILES', 'FINAL_DRAFT_FILES', 'PRODUCTION_READY_FILES',
     ]) {
         pkp.registry.storeExtend(`fileManager_${namespace}`, ({store}) => {
-            store.extender.extendFn('getTopItems', (items) => rules(store.props.submission, store.props.submissionStageId).recommendOnly ? [] : items);
-            store.extender.extendFn('getItemActions', (items) => rules(store.props.submission, store.props.submissionStageId).recommendOnly
+            store.extender.extendFn('getTopItems', (items) => rules(store.props.submission, store.props.submissionStageId).restrictFiles ? [] : items);
+            store.extender.extendFn('getItemActions', (items) => rules(store.props.submission, store.props.submissionStageId).restrictFiles
                 ? items.filter((item) => item.name === 'fileSeeNotes') : items);
         });
     }

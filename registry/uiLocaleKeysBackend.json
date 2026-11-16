@@ -2,5 +2,6 @@
   "plugins.generic.editorialAdvisor.name",
   "plugins.generic.editorialAdvisor.description",
   "plugins.generic.editorialAdvisor.blockContact",
+  "plugins.generic.editorialAdvisor.restrictFiles",
   "plugins.generic.editorialAdvisor.denied"
 ]

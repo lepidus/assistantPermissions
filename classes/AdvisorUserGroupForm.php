@@ -13,13 +13,15 @@ class AdvisorUserGroupForm extends UserGroupForm
     {
         parent::initData();
         $group = $this->getUserGroupId() ? UserGroup::findById($this->getUserGroupId(), $this->getContextId()) : null;
-        $this->setData(Access::BLOCK_CONTACT, (bool) $group?->{Access::BLOCK_CONTACT});
+        foreach ([Access::BLOCK_CONTACT, Access::RESTRICT_FILES] as $option) {
+            $this->setData($option, (bool) $group?->{$option});
+        }
     }
 
     public function readInputData()
     {
         parent::readInputData();
-        $this->readUserVars([Access::BLOCK_CONTACT]);
+        $this->readUserVars([Access::BLOCK_CONTACT, Access::RESTRICT_FILES]);
     }
 
     public function getRecommendOnlyRoles(): array
@@ -27,14 +29,20 @@ class AdvisorUserGroupForm extends UserGroupForm
         return [...parent::getRecommendOnlyRoles(), Role::ROLE_ID_ASSISTANT];
     }
 
-    /** The core invokes this after saving both new and existing groups, with their definitive ID. */
+    /** This native preparation method runs before saving both new and existing groups. */
+    public function _setUserGroupLocaleFields($userGroup, $request): UserGroup
+    {
+        $group = parent::_setUserGroupLocaleFields($userGroup, $request);
+        foreach ([Access::BLOCK_CONTACT, Access::RESTRICT_FILES] as $option) {
+            $group->{$option} = $group->roleId == Role::ROLE_ID_ASSISTANT && (bool) $this->getData($option);
+        }
+        return $group;
+    }
+
     public function _assignStagesToUserGroup($userGroupId, $userAssignedStages)
     {
         parent::_assignStagesToUserGroup($userGroupId, $userAssignedStages);
         $group = UserGroup::findById($userGroupId, $this->getContextId());
-        $group->{Access::BLOCK_CONTACT} = $group->roleId == Role::ROLE_ID_ASSISTANT
-            && (bool) $this->getData(Access::BLOCK_CONTACT);
-        $group->save();
         if ($group->roleId == Role::ROLE_ID_ASSISTANT) {
             StageAssignment::withUserGroupId($group->id)->withContextId($this->getContextId())
                 ->update(['recommend_only' => (bool) $group->recommendOnly]);

@@ -11,6 +11,7 @@ use PKP\userGroup\UserGroup;
 class Access
 {
     public const BLOCK_CONTACT = 'editorialAdvisorBlockContact';
+    public const RESTRICT_FILES = 'editorialAdvisorRestrictFiles';
 
     private array $groupsByUser = [];
 
@@ -31,7 +32,8 @@ class Access
         }
         return new Restrictions(
             $groups->contains(fn ($g) => (bool) $g->recommendOnly),
-            $groups->contains(fn ($g) => (bool) $g->{self::BLOCK_CONTACT})
+            $groups->contains(fn ($g) => (bool) $g->{self::BLOCK_CONTACT}),
+            $groups->contains(fn ($g) => (bool) $g->{self::RESTRICT_FILES})
         );
     }
 

@@ -42,3 +42,6 @@ msgstr "Decline"
 
 msgid "plugins.generic.editorialAdvisor.reviewerRecommendation.6"
 msgstr "See comments"
+
+msgid "plugins.generic.editorialAdvisor.restrictFiles"
+msgstr "Restrict files to download and More Information"

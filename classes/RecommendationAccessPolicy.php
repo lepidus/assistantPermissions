@@ -56,7 +56,9 @@ class RecommendationAccessPolicy extends AuthorizationPolicy
             }
             $action = reset($actions);
             if (!is_array($action) || ($action['id'] ?? '') !== 'discussion'
-                || !empty($action['cc']) || !empty($action['bcc']) || !empty($action['attachments'])
+                || !empty($action['cc']) || !empty($action['bcc'])
+                || ((new Access())->restrictions($context->getId(), $user->getId(), $submission->getId(), $stageId)->restrictFiles
+                    && !empty($action['attachments']))
                 || !is_array($action['recipients'] ?? [])
                 || array_diff($action['recipients'] ?? [], $editors)) {
                 return self::AUTHORIZATION_DENY;

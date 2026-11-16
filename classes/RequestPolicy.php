@@ -49,7 +49,7 @@ class RequestPolicy extends AuthorizationPolicy
                     return self::AUTHORIZATION_DENY;
                 }
             }
-            if ($rules->recommendOnly && $this->modifiesReviewerAttachment()) {
+            if ($rules->restrictFiles && $this->modifiesReviewerAttachment()) {
                 return self::AUTHORIZATION_DENY;
             }
             if ($rules->blockContact && in_array(strtolower($this->operation), ['addnote', 'insertnote', 'updatenote', 'deletenote', 'editquery', 'updatequery', 'deletequery', 'openquery', 'closequery'], true)) {

@@ -5,7 +5,7 @@ namespace APP\plugins\generic\editorialAdvisor\classes;
 /** Rules shared by the legacy component handlers and the REST API. */
 class Restrictions
 {
-    public function __construct(public bool $recommendOnly, public bool $blockContact)
+    public function __construct(public bool $recommendOnly, public bool $blockContact, public bool $restrictFiles = false)
     {
     }
 
@@ -29,7 +29,7 @@ class Restrictions
             && in_array($operation, ['saveparticipant', 'deleteparticipant', 'addparticipant'], true)) {
             return false;
         }
-        if ($this->recommendOnly && str_contains($component, 'file')) {
+        if ($this->restrictFiles && str_contains($component, 'file')) {
             return in_array($operation, [
                 'fetchgrid', 'fetchrow', 'fetch', 'viewfile', 'downloadfile', 'downloadallfiles',
                 'downloadlibraryfile', 'recorddownload', 'enablelinkaction',
@@ -49,7 +49,7 @@ class Restrictions
             return true;
         }
         $path = strtolower($path);
-        if ($this->recommendOnly && preg_match('~(?:^|/)submissions/\d+/files(?:/|$)~', $path)) {
+        if ($this->restrictFiles && preg_match('~(?:^|/)submissions/\d+/files(?:/|$)~', $path)) {
             return false;
         }
         if ($this->blockContact && preg_match('~(?:^|/)(_?emails?|messages?|reviews?|reviewers?|reviewassignments)(?:/|$)~', $path)) {
@@ -61,7 +61,9 @@ class Restrictions
         if ($this->recommendOnly && preg_match('~/submissions/\d+(?:/publications/\d+/(?:publish|unpublish))?/?$~', '/' . ltrim($path, '/'))) {
             return false;
         }
-        return !($this->recommendOnly && strtoupper($method) === 'DELETE'
-            && (str_contains($path, 'file') || str_contains($path, 'publication') || str_contains($path, 'submission')));
+        return !(strtoupper($method) === 'DELETE'
+            && (($this->restrictFiles && str_contains($path, 'file'))
+                || ($this->recommendOnly && !preg_match('~(?:^|/)files(?:/|$)~', $path)
+                    && (str_contains($path, 'publication') || str_contains($path, 'submission')))));
     }
 }

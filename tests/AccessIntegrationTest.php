@@ -51,7 +51,7 @@ class AccessIntegrationTest extends TestCase
         $this->group->fill([
             'contextId' => $this->contextId, 'roleId' => Role::ROLE_ID_ASSISTANT,
             'name' => ['en' => 'Arbitrary counsel role'], 'abbrev' => ['en' => 'AC'],
-            'recommendOnly' => true, Access::BLOCK_CONTACT => true,
+            'recommendOnly' => true, Access::BLOCK_CONTACT => true, Access::RESTRICT_FILES => true,
         ]);
         $this->group->save();
         DB::table('user_user_groups')->insert([
@@ -165,7 +165,7 @@ class AccessIntegrationTest extends TestCase
         foreach ([
             'roleId' => Role::ROLE_ID_ASSISTANT, 'name' => ['en' => 'Counsel with custom name'],
             'abbrev' => ['en' => 'CC'], 'assignedStages' => [3], 'recommendOnly' => true,
-            Access::BLOCK_CONTACT => true,
+            Access::BLOCK_CONTACT => true, Access::RESTRICT_FILES => true,
         ] as $key => $value) {
             $form->setData($key, $value);
         }
@@ -174,6 +174,7 @@ class AccessIntegrationTest extends TestCase
         self::assertSame(Role::ROLE_ID_ASSISTANT, $group->roleId);
         self::assertTrue($group->recommendOnly);
         self::assertTrue($group->{Access::BLOCK_CONTACT});
+        self::assertTrue($group->{Access::RESTRICT_FILES});
         $edit = new AdvisorUserGroupForm($this->contextId, $group->id);
         $edit->initData();
         \APP\template\TemplateManager::getManager(Registry::get('request'))->assign([
@@ -183,6 +184,7 @@ class AccessIntegrationTest extends TestCase
         Registry::get('request')->getSession()->regenerateToken();
         $html = $edit->fetch(Registry::get('request'));
         self::assertStringContainsString('name="editorialAdvisorBlockContact"', $html);
+        self::assertStringContainsString('name="editorialAdvisorRestrictFiles"', $html);
         self::assertStringContainsString('name="recommendOnly"', $html);
     }
 
@@ -460,6 +462,73 @@ class AccessIntegrationTest extends TestCase
             );
         }
         self::assertNotContains($editorId, (new Access())->notificationRecipients($this->submissionId, 3));
+    }
+
+    public function testFileOptionPersistsIndependentlyAndCanBeDisabled(): void
+    {
+        $this->group->recommendOnly = false;
+        $this->group->{Access::BLOCK_CONTACT} = false;
+        $this->group->{Access::RESTRICT_FILES} = true;
+        $this->group->save();
+        $rules = (new Access())->restrictions($this->contextId, $this->userId, $this->submissionId, 3);
+        self::assertTrue($rules->restrictFiles);
+        self::assertFalse($rules->recommendOnly);
+        self::assertFalse($rules->blockContact);
+        $request = $this->request(['submissionId' => $this->submissionId, 'stageId' => 3]);
+        self::assertSame(
+            AuthorizationPolicy::AUTHORIZATION_DENY,
+            (new RequestPolicy($request, 'wizard.fileUpload.FileUploadWizardHandler', 'uploadFile'))->effect()
+        );
+        $form = new AdvisorUserGroupForm($this->contextId, $this->group->id);
+        $form->initData();
+        self::assertTrue($form->getData(Access::RESTRICT_FILES));
+        $form->setData(Access::RESTRICT_FILES, false);
+        $form->setData('recommendOnly', true);
+        $form->setData('assignedStages', [3]);
+        $form->execute();
+        $rules = (new Access())->restrictions($this->contextId, $this->userId, $this->submissionId, 3);
+        self::assertFalse($rules->restrictFiles);
+        self::assertTrue($rules->recommendOnly);
+        self::assertSame(
+            AuthorizationDecisionManager::AUTHORIZATION_NOT_APPLICABLE,
+            (new RequestPolicy($request, 'wizard.fileUpload.FileUploadWizardHandler', 'uploadFile'))->effect()
+        );
+    }
+
+    public function testRecommendationAttachmentGuardDependsOnFileOption(): void
+    {
+        [$policy, $input] = $this->recommendationFixture(true);
+        $input['actions'][0]['attachments'] = [['submissionFileId' => 12]];
+        $previousHttp = app(\Illuminate\Http\Request::class);
+        try {
+            app()->instance(\Illuminate\Http\Request::class, \Illuminate\Http\Request::create('/', 'POST', $input));
+            self::assertSame(AuthorizationPolicy::AUTHORIZATION_DENY, $policy->effect());
+            $this->group->{Access::RESTRICT_FILES} = false;
+            $this->group->save();
+            // The plugin's authorization no longer blocks attachments; native validation still applies.
+            self::assertSame(AuthorizationPolicy::AUTHORIZATION_PERMIT, $policy->effect());
+        } finally {
+            app()->instance(\Illuminate\Http\Request::class, $previousHttp);
+        }
+    }
+
+    public function testFileOptionIsSavedEvenWithoutAssignedStages(): void
+    {
+        $form = new AdvisorUserGroupForm($this->contextId, 0);
+        $form->initData();
+        foreach (['roleId' => Role::ROLE_ID_ASSISTANT, 'name' => ['en' => 'File restriction without stages'],
+            'abbrev' => ['en' => 'FR'], 'assignedStages' => [], Access::RESTRICT_FILES => true] as $key => $value) {
+            $form->setData($key, $value);
+        }
+        $form->execute();
+        $group = UserGroup::withContextIds([$this->contextId])->orderByDesc('user_group_id')->first();
+        self::assertTrue($group->{Access::RESTRICT_FILES});
+        $edit = new AdvisorUserGroupForm($this->contextId, $group->id);
+        $edit->initData();
+        $edit->setData(Access::RESTRICT_FILES, false);
+        $edit->setData('assignedStages', []);
+        $edit->execute();
+        self::assertFalse(UserGroup::findById($group->id)->{Access::RESTRICT_FILES});
     }
 
 }

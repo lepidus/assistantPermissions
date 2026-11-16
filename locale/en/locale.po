@@ -45,6 +45,3 @@ msgstr "See comments"
 
 msgid "plugins.generic.editorialAdvisor.restrictFiles"
 msgstr "Allow read-only access to files"
-
-msgid "plugins.generic.editorialAdvisor.restrictFiles.description"
-msgstr "Allows viewing file details and downloading files. Prevents uploading, selecting, editing, replacing or deleting files."

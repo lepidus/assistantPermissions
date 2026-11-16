@@ -56,13 +56,7 @@
 			{fbvFormSection title="settings.roles.roleOptions" list="true"}
 				{fbvElement type="checkbox" name="showTitle" id="showTitle" checked=$showTitle label="settings.roles.showTitles"}
 				{fbvElement type="checkbox" name="permitSelfRegistration" id="permitSelfRegistration" checked=$permitSelfRegistration label="settings.roles.permitSelfRegistration"}
-				<li>
-                    <label for="editorialAdvisorRestrictFiles">
-                        <input type="checkbox" class="field checkbox" name="editorialAdvisorRestrictFiles" id="editorialAdvisorRestrictFiles" value="1" aria-describedby="editorialAdvisorRestrictFilesDescription"{if $editorialAdvisorRestrictFiles} checked="checked"{/if} />
-                        {translate key="plugins.generic.editorialAdvisor.restrictFiles"}
-                    </label>
-                    <p id="editorialAdvisorRestrictFilesDescription" class="description">{translate key="plugins.generic.editorialAdvisor.restrictFiles.description"}</p>
-                </li>
+				{fbvElement type="checkbox" name="editorialAdvisorRestrictFiles" id="editorialAdvisorRestrictFiles" checked=$editorialAdvisorRestrictFiles label="plugins.generic.editorialAdvisor.restrictFiles"}
 				{fbvElement type="checkbox" name="editorialAdvisorBlockContact" id="editorialAdvisorBlockContact" checked=$editorialAdvisorBlockContact label="plugins.generic.editorialAdvisor.blockContact"}
                 {fbvElement type="checkbox" name="recommendOnly" id="recommendOnly" checked=$recommendOnly label="settings.roles.recommendOnly"}
 				{fbvElement type="checkbox" name="permitMetadataEdit" id="permitMetadataEdit" checked=$permitMetadataEdit label="settings.roles.permitMetadataEdit"}

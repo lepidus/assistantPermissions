@@ -14,9 +14,9 @@ use APP\plugins\generic\editorialAdvisor\classes\AdvisorSubmissionController;
 use APP\plugins\generic\editorialAdvisor\classes\AdvisorUserGroupGridHandler;
 use APP\plugins\generic\editorialAdvisor\classes\DiscussionHooks;
 use APP\plugins\generic\editorialAdvisor\classes\RequestPolicy;
+use APP\plugins\generic\editorialAdvisor\classes\SubmissionPermissions;
+use APP\plugins\generic\editorialAdvisor\classes\TemplateHooks;
 use APP\submission\maps\Schema;
-use APP\submission\Submission;
-use APP\template\TemplateManager;
 use PKP\core\APIRouter;
 use PKP\plugins\GenericPlugin;
 use PKP\plugins\Hook;
@@ -25,7 +25,6 @@ use PKP\security\Role;
 class EditorialAdvisorPlugin extends GenericPlugin
 {
     private ?Access $access = null;
-    private array $readOnlyQueries = [];
 
     public function register($category, $path, $mainContextId = null): bool
     {
@@ -42,14 +41,16 @@ class EditorialAdvisorPlugin extends GenericPlugin
         Hook::add('LoadComponentHandler', $this->loadComponent(...), Hook::SEQUENCE_LAST);
         Hook::add('APIHandler::endpoints::plugin', $this->registerApiControllers(...));
 
-        Hook::add('TemplateManager::fetch', $this->prepareTemplate(...));
+        $templates = new TemplateHooks($this, $this->access ??= new Access());
+        Hook::add('TemplateManager::fetch', $templates->prepareTemplate(...));
 
         $discussions = new DiscussionHooks();
         Hook::add('queryform::validate', $discussions->validate(...));
         Hook::add('querynoteform::validate', $discussions->validate(...));
 
-        app('maps')->extend(Schema::class, $this->submissionPermissions(...));
-        Hook::add('TemplateManager::display', $this->prepareDisplay(...));
+        $permissions = new SubmissionPermissions($this->access);
+        app('maps')->extend(Schema::class, $permissions->map(...));
+        Hook::add('TemplateManager::display', $templates->prepareDisplay(...));
 
         return $success;
     }
@@ -117,45 +118,6 @@ class EditorialAdvisorPlugin extends GenericPlugin
         return false;
     }
 
-    private function prepareDisplay(string $name, array $args): bool
-    {
-        $request = Application::get()->getRequest();
-
-        if ($args[1] === 'decision/record.tpl' && $request->getRouter()->getHandler() instanceof AdvisorDecisionHandler) {
-            $this->prepareRecommendationAttachments($args[0], $request);
-
-            $args[0]->addStyleSheet('advisorRecommendation', $request->getBaseUrl() . '/' . $this->getPluginPath()
-                . '/public/styles/nativeRecommendation.css', ['contexts' => ['backend']]);
-        }
-
-        $args[0]->addStyleSheet('advisorParticipants', $request->getBaseUrl() . '/' . $this->getPluginPath()
-            . '/public/styles/participants.css', ['contexts' => ['backend']]);
-        $args[0]->addJavaScript(
-            'editorialAdvisor',
-            $request->getBaseUrl() . '/' . $this->getPluginPath() . '/public/build/editorialAdvisor.js',
-            ['contexts' => ['backend'], 'priority' => TemplateManager::STYLE_SEQUENCE_LAST]
-        );
-
-        return false;
-    }
-
-    private function prepareRecommendationAttachments(TemplateManager $manager, \PKP\core\PKPRequest $request): void
-    {
-        $steps = $manager->getState('steps') ?? [];
-
-        foreach ($steps as $step) {
-            if ($step->type === 'email' && (new Access())->restrictions(
-                $request->getContext()->getId(),
-                $request->getUser()->getId(),
-                (int) ($request->getRouter()->getRequestedArgs($request)[0] ?? 0)
-            )->restrictFiles) {
-                $step->attachers = [];
-            }
-        }
-
-        $manager->setState(['steps' => $steps]);
-    }
-
     public function loadComponent(string $name, array $args): bool
     {
         [$component, $operation] = $args;
@@ -208,129 +170,6 @@ class EditorialAdvisorPlugin extends GenericPlugin
         }
 
         return null;
-    }
-
-    public function prepareTemplate(string $name, array $args): bool
-    {
-        [$manager, $template] = $args;
-
-        if ($template === 'controllers/grid/settings/roles/form/userGroupForm.tpl') {
-            $manager->assign('advisorAssistantRoleId', Role::ROLE_ID_ASSISTANT);
-            $args[4] = $manager->fetch($this->getTemplateResource('userGroupForm.tpl'));
-            return true;
-        }
-
-        if ($template === 'controllers/grid/users/reviewer/readReview.tpl') {
-            $request = Application::get()->getRequest();
-            $review = $manager->getTemplateVars('reviewAssignment');
-            if ($review && $request->getContext() && $request->getUser()
-                && (new Access())->restrictions($request->getContext()->getId(), $request->getUser()->getId(), $review->getSubmissionId(), $review->getStageId())->recommendOnly) {
-                $recommendation = (int) $review->getRecommendation();
-                $manager->assign('advisorReviewerRecommendation', $recommendation >= 1 && $recommendation <= 6
-                    ? __('plugins.generic.editorialAdvisor.reviewerRecommendation.' . $recommendation) : '');
-                $args[4] = $manager->fetch($this->getTemplateResource('readReview.tpl'));
-                return true;
-            }
-        }
-
-        if ($template === 'controllers/grid/gridRow.tpl') {
-            $row = $manager->getTemplateVars('row');
-            if ($row instanceof \PKP\controllers\grid\queries\QueryNotesGridRow && $this->isReadOnlyQuery($row->getQuery())) {
-                $row->_actions = [];
-            }
-        }
-
-        if ($template === 'controllers/grid/queries/readQuery.tpl') {
-            $query = $manager->getTemplateVars('query');
-            if ($query && $this->isReadOnlyQuery($query)) {
-                $participants = \PKP\query\QueryParticipant::withQueryId($query->id)->get();
-                $manager->assign('advisorQueryParticipants', $participants->pluck('user')->filter()->all());
-                $args[4] = $manager->fetch($this->getTemplateResource('readQuery.tpl'));
-                return true;
-            }
-        }
-
-        if ($template === 'controllers/grid/queries/form/queryForm.tpl') {
-            $request = Application::get()->getRequest();
-            $submissionId = (int) $manager->getTemplateVars('assocId');
-            if ($request->getContext() && $request->getUser()
-                && (new Access())->restrictions($request->getContext()->getId(), $request->getUser()->getId(), $submissionId, (int) $manager->getTemplateVars('stageId'))->blockContact) {
-                $forbidden = (new Access())->forbiddenParticipants($submissionId);
-                $participants = $manager->getTemplateVars('allParticipants') ?? [];
-                $manager->assign('allParticipants', array_diff_key($participants, array_flip($forbidden)));
-            }
-        }
-
-        return false;
-    }
-
-    private function isReadOnlyQuery(\PKP\query\Query $query): bool
-    {
-        if (array_key_exists($query->id, $this->readOnlyQueries)) {
-            return $this->readOnlyQueries[$query->id];
-        }
-
-        $request = Application::get()->getRequest();
-        $access = $this->access ??= new Access();
-        return $this->readOnlyQueries[$query->id] = $request->getContext() && $request->getUser()
-            && $access->restrictions($request->getContext()->getId(), $request->getUser()->getId(), (int) $query->assocId, (int) $query->stageId)->blockContact
-            && (bool) array_intersect(
-                $access->forbiddenParticipants((int) $query->assocId),
-                \PKP\query\QueryParticipant::withQueryId($query->id)->pluck('user_id')->all()
-            );
-    }
-
-    public function submissionPermissions(array $output, Submission $submission): array
-    {
-        $request = Application::get()->getRequest();
-
-        if (!$request->getContext() || !$request->getUser()) {
-            return $output;
-        }
-
-        $access = $this->access ??= new Access();
-        $contextId = $request->getContext()->getId();
-        $userId = $request->getUser()->getId();
-        $stageId = (int) $submission->getData('stageId');
-        $rules = $access->restrictions($contextId, $userId, $submission->getId(), $stageId);
-        $stages = $this->stagePermissions($access, $submission, $contextId, $userId);
-
-        foreach ($output['stages'] ?? [] as $key => $stage) {
-            $id = (int) $stage['id'];
-            if ($stages[$id]['recommendOnly'] ?? false) {
-                $output['stages'][$key]['currentUserCanRecommendOnly'] = $access->canRecommend(
-                    $contextId,
-                    $userId,
-                    $submission->getId(),
-                    $id
-                );
-            }
-        }
-
-        $output['editorialAdvisor'] = [
-            'stages' => $stages,
-            'recommendOnly' => $rules->recommendOnly,
-            'blockContact' => $rules->blockContact,
-            'restrictFiles' => $rules->restrictFiles,
-            'notifyParticipantIds' => $stages[$stageId]['notifyParticipantIds'] ?? [],
-        ];
-        return $output;
-    }
-
-    private function stagePermissions(Access $access, Submission $submission, int $contextId, int $userId): array
-    {
-        $stages = [];
-
-        foreach ([1, 2, 3, 4, 5] as $id) {
-            $stageRules = $access->restrictions($contextId, $userId, $submission->getId(), $id);
-            $stages[$id] = [
-                'recommendOnly' => $stageRules->recommendOnly, 'blockContact' => $stageRules->blockContact,
-                'restrictFiles' => $stageRules->restrictFiles,
-                'notifyParticipantIds' => $stageRules->blockContact ? $access->notificationRecipients($submission->getId(), $id) : [],
-            ];
-        }
-
-        return $stages;
     }
 
     public function getDisplayName(): string

@@ -4,7 +4,6 @@ namespace APP\plugins\generic\assistantPermissions\classes;
 
 use PKP\controllers\grid\settings\roles\form\UserGroupForm;
 use PKP\security\Role;
-use PKP\stageAssignment\StageAssignment;
 use PKP\userGroup\UserGroup;
 
 class AssistantPermissionsUserGroupForm extends UserGroupForm
@@ -24,6 +23,7 @@ class AssistantPermissionsUserGroupForm extends UserGroupForm
         $this->readUserVars([Access::BLOCK_CONTACT, Access::RESTRICT_FILES]);
     }
 
+    /** Use the native role option as the default for new participant assignments. */
     public function getRecommendOnlyRoles(): array
     {
         return [...parent::getRecommendOnlyRoles(), Role::ROLE_ID_ASSISTANT];
@@ -40,13 +40,4 @@ class AssistantPermissionsUserGroupForm extends UserGroupForm
         return $group;
     }
 
-    public function _assignStagesToUserGroup($userGroupId, $userAssignedStages)
-    {
-        parent::_assignStagesToUserGroup($userGroupId, $userAssignedStages);
-        $group = UserGroup::findById($userGroupId, $this->getContextId());
-        if ($group->roleId == Role::ROLE_ID_ASSISTANT) {
-            StageAssignment::withUserGroupId($group->id)->withContextId($this->getContextId())
-                ->update(['recommend_only' => (bool) $group->recommendOnly]);
-        }
-    }
 }

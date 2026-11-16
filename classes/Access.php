@@ -28,7 +28,9 @@ class Access
         }
 
         return new Restrictions(
-            $groups->contains(fn ($g) => (bool) $g->recommendOnly),
+            $submissionId !== null && $groups->contains(fn ($group) => $group->stageAssignments->contains(
+                fn ($assignment) => (int) $assignment->submissionId === $submissionId && (bool) $assignment->recommendOnly
+            )),
             $groups->contains(fn ($g) => (bool) $g->{self::BLOCK_CONTACT}),
             $groups->contains(fn ($g) => (bool) $g->{self::RESTRICT_FILES})
         );
@@ -63,7 +65,6 @@ class Access
         }
 
         $groupIds = UserGroup::withContextIds([$contextId])->withRoleIds([Role::ROLE_ID_ASSISTANT])
-            ->isRecommendOnly(true)
             ->whereHas('userGroupStages', fn ($q) => $q->where('stage_id', $stageId))
             ->whereHas('userUserGroups', fn ($q) => $q->withActive()->withUserId($userId))
             ->pluck('user_group_id')->all();

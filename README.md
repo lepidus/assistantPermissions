@@ -16,16 +16,17 @@ Requires **OMP 3.5.0.x and PHP 8.2**.
 
 | Option | Effect |
 | --- | --- |
-| **This role is only allowed to recommend a review decision…** | Enables recommendations. Prevents final decisions and management of reviewers, review rounds and participants. |
+| **This role is only allowed to recommend a review decision…** | Preselects recommend-only for new assignments. The choice can be changed for each submission. |
 | **Allow read-only access to files** | Keeps downloads and **More Information**. Blocks uploading, selecting, editing, replacing and deleting files, and attaching files to recommendations. |
 | **Prevent communication with authors and reviewers (keep their identities visible)** | Blocks contact with authors and reviewers. Allows **Notify** for editorial staff assigned to the stage. |
 
 4. Save the role and assign the user to it under **Users & Roles**.
-5. Open the submission and add the user under **Participants**, using that role.
+5. Open the submission and add the user under **Participants**, using that role. Select **Recommend only** in the assignment options to allow recommendations instead of final decisions. You can change this option by editing the participant.
 
-Enable **all three options** for the complete restricted assistant profile. They are independent:
-Recommend-only does not restrict files. Select the file option explicitly for existing roles.
-With the options disabled, the role keeps its native permissions. The plugin does not create roles automatically.
+File and communication restrictions are independent role settings. Recommendation permission belongs
+to each submission assignment. The role sets its initial default; editing the role preserves existing assignment choices.
+With the role options disabled, native file and communication permissions apply.
+The plugin does not create roles automatically.
 
 ## Credits and license
 

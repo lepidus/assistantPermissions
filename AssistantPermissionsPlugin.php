@@ -13,6 +13,7 @@ use APP\plugins\generic\assistantPermissions\classes\AssistantPermissionsDecisio
 use APP\plugins\generic\assistantPermissions\classes\AssistantPermissionsSubmissionController;
 use APP\plugins\generic\assistantPermissions\classes\AssistantPermissionsUserGroupGridHandler;
 use APP\plugins\generic\assistantPermissions\classes\DiscussionHooks;
+use APP\plugins\generic\assistantPermissions\classes\ParticipantHooks;
 use APP\plugins\generic\assistantPermissions\classes\RequestPolicy;
 use APP\plugins\generic\assistantPermissions\classes\SubmissionPermissions;
 use APP\plugins\generic\assistantPermissions\classes\TemplateHooks;
@@ -20,7 +21,6 @@ use APP\submission\maps\Schema;
 use PKP\core\APIRouter;
 use PKP\plugins\GenericPlugin;
 use PKP\plugins\Hook;
-use PKP\security\Role;
 
 class AssistantPermissionsPlugin extends GenericPlugin
 {
@@ -35,7 +35,6 @@ class AssistantPermissionsPlugin extends GenericPlugin
         }
 
         Hook::add('Schema::get::userGroup', $this->extendUserGroupSchema(...));
-        \PKP\stageAssignment\StageAssignment::saving($this->synchronizeRecommendationSetting(...));
 
         Hook::add('LoadHandler', $this->loadDecisionHandler(...));
         Hook::add('LoadComponentHandler', $this->loadComponent(...), Hook::SEQUENCE_LAST);
@@ -43,6 +42,11 @@ class AssistantPermissionsPlugin extends GenericPlugin
 
         $templates = new TemplateHooks($this, $this->access ??= new Access());
         Hook::add('TemplateManager::fetch', $templates->prepareTemplate(...));
+
+        $participants = new ParticipantHooks();
+        Hook::add('TemplateManager::fetch', $participants->prepareTemplate(...));
+        Hook::add('addparticipantform::validate', $participants->validate(...));
+        Hook::add('addparticipantform::execute', $participants->execute(...));
 
         $discussions = new DiscussionHooks();
         Hook::add('queryform::validate', $discussions->validate(...));
@@ -64,15 +68,6 @@ class AssistantPermissionsPlugin extends GenericPlugin
         }
 
         return false;
-    }
-
-    private function synchronizeRecommendationSetting($assignment): void
-    {
-        $group = \PKP\userGroup\UserGroup::findById((int) $assignment->userGroupId);
-
-        if ($group && $group->roleId == Role::ROLE_ID_ASSISTANT && $this->getEnabled($group->contextId)) {
-            $assignment->recommendOnly = (bool) $group->recommendOnly;
-        }
     }
 
     private function loadDecisionHandler(string $name, array $args): bool

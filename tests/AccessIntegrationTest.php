@@ -51,7 +51,7 @@ class AccessIntegrationTest extends TestCase
         $this->group->fill([
             'contextId' => $this->contextId, 'roleId' => Role::ROLE_ID_ASSISTANT,
             'name' => ['en' => 'Arbitrary counsel role'], 'abbrev' => ['en' => 'AC'],
-            'recommendOnly' => true, Access::BLOCK_CONTACT => true, Access::RESTRICT_FILES => true,
+            'recommendOnly' => false, Access::BLOCK_CONTACT => true, Access::RESTRICT_FILES => true,
         ]);
         $this->group->save();
         DB::table('user_user_groups')->insert([
@@ -77,7 +77,7 @@ class AccessIntegrationTest extends TestCase
         parent::tearDown();
     }
 
-    private function request(array $params = []): Request
+    private function request(array $params = [], ?int $actorId = null): Request
     {
         $request = $this->createPartialMock(Request::class, ['getContext', 'getUser', 'getUserVar', 'getSite', 'getRouter']);
         $context = app('context')->get($this->contextId);
@@ -90,7 +90,7 @@ class AccessIntegrationTest extends TestCase
         $site->setData('supportedLocales', ['en']);
         $request->method('getSite')->willReturn($site);
         $request->method('getContext')->willReturn($context);
-        $request->method('getUser')->willReturn(Repo::user()->get($this->userId));
+        $request->method('getUser')->willReturn(Repo::user()->get($actorId ?? $this->userId));
         $request->method('getUserVar')->willReturnCallback(fn ($key) => $params[$key] ?? null);
         return $request;
     }
@@ -105,6 +105,28 @@ class AccessIntegrationTest extends TestCase
         self::assertFalse((new Access())->restrictions($this->contextId, $this->userId, $this->submissionId, 2)->recommendOnly);
         self::assertFalse((new Access())->canRecommend($this->contextId + 1000, $this->userId, $this->submissionId, 3));
         self::assertFalse((new Access())->restrictions($this->contextId, $this->userId, $this->submissionId + 100000)->recommendOnly);
+    }
+
+    public function testRecommendationFollowsEachSubmissionAssignmentRatherThanTheRole(): void
+    {
+        $access = new Access();
+        self::assertTrue($access->canRecommend($this->contextId, $this->userId, $this->submissionId, 3));
+        self::assertFalse($access->restrictions($this->contextId, $this->userId)->recommendOnly);
+        $otherSubmission = DB::table('submissions')->insertGetId([
+            'context_id' => $this->contextId, 'stage_id' => 3, 'status' => 1, 'locale' => 'en', 'submission_progress' => '',
+        ]);
+        DB::table('stage_assignments')->insert([
+            'submission_id' => $otherSubmission, 'user_group_id' => $this->group->id, 'user_id' => $this->userId,
+            'date_assigned' => date('Y-m-d H:i:s'), 'recommend_only' => false,
+        ]);
+        self::assertFalse((new Access())->restrictions($this->contextId, $this->userId, $otherSubmission, 3)->recommendOnly);
+        self::assertFalse((new Access())->canRecommend($this->contextId, $this->userId, $otherSubmission, 3));
+
+        $this->group->recommendOnly = true;
+        $this->group->save();
+        DB::table('stage_assignments')->where('submission_id', $this->submissionId)->update(['recommend_only' => false]);
+        self::assertFalse((new Access())->restrictions($this->contextId, $this->userId, $this->submissionId, 3)->recommendOnly);
+        self::assertFalse((new Access())->canRecommend($this->contextId, $this->userId, $this->submissionId, 3));
     }
 
     public function testExpiredMembershipDoesNotGrantRecommendation(): void
@@ -153,7 +175,7 @@ class AccessIntegrationTest extends TestCase
         );
     }
 
-    public function testAssistantOptionIsAvailableToNewRoles(): void
+    public function testRecommendationDefaultIsAvailableInAssistantRoleSettings(): void
     {
         $form = new AssistantPermissionsUserGroupForm($this->contextId, 0);
         self::assertContains(Role::ROLE_ID_ASSISTANT, $form->getRecommendOnlyRoles());
@@ -202,11 +224,96 @@ class AccessIntegrationTest extends TestCase
         self::assertSame(\PKP\pages\decision\DecisionHandler::class, $method->getDeclaringClass()->getName());
     }
 
-    public function testNewAssignmentsUseTheAssistantGroupRecommendationSetting(): void
+    public function testNewAssignmentsPreserveTheSelectedRecommendationPermission(): void
     {
         DB::table('stage_assignments')->where('submission_id', $this->submissionId)->delete();
         $assignment = Repo::stageAssignment()->build($this->submissionId, $this->group->id, $this->userId, false);
-        self::assertTrue((bool) $assignment->recommendOnly);
+        self::assertFalse((bool) $assignment->recommendOnly);
+        $assignment->recommendOnly = true;
+        $assignment->save();
+        self::assertTrue((bool) $assignment->fresh()->recommendOnly);
+        $assignment->recommendOnly = false;
+        $assignment->save();
+        self::assertFalse((bool) $assignment->fresh()->recommendOnly);
+    }
+
+    public function testNativeParticipantFormCreatesAndEditsRecommendationPermission(): void
+    {
+        $actorId = (int) DB::table('users')->where('user_id', '<>', $this->userId)->value('user_id');
+        $manager = UserGroup::withContextIds([$this->contextId])->withRoleIds([Role::ROLE_ID_MANAGER])->first();
+        DB::table('user_user_groups')->updateOrInsert(
+            ['user_group_id' => $manager->id, 'user_id' => $actorId],
+            ['date_end' => null]
+        );
+        $actorRequest = $this->request([], $actorId);
+        Registry::set('request', $actorRequest);
+        DB::table('stage_assignments')->where('submission_id', $this->submissionId)->delete();
+        $submission = Repo::submission()->get($this->submissionId);
+        $form = new \PKP\controllers\grid\users\stageParticipant\form\AddParticipantForm($submission, 3);
+        foreach (['userGroupId' => $this->group->id, 'userId' => $this->userId, 'recommendOnly' => true] as $key => $value) {
+            $form->setData($key, $value);
+        }
+        $templateManager = \APP\template\TemplateManager::getManager($actorRequest);
+        $templateManager->assign([
+            'stageId' => 3, 'assignmentId' => null,
+            'possibleRecommendOnlyUserGroupIds' => [], 'recommendOnlyUserGroupIds' => [$this->group->id],
+        ]);
+        $template = 'controllers/grid/users/stageParticipant/addParticipantForm.tpl';
+        $templateArgs = [$templateManager, $template, null, null, null];
+        Hook::call('TemplateManager::fetch', $templateArgs);
+        self::assertContains($this->group->id, $templateManager->getTemplateVars('possibleRecommendOnlyUserGroupIds'));
+        self::assertContains($this->group->id, $templateManager->getTemplateVars('recommendOnlyUserGroupIds'));
+        $result = null;
+        Hook::call('addparticipantform::validate', [$form, &$result]);
+        self::assertTrue($form->isValid());
+        [, , $assignmentId] = $form->execute();
+        self::assertTrue((bool) \PKP\stageAssignment\StageAssignment::find($assignmentId)->recommendOnly);
+        $templateManager->assign('assignmentId', $assignmentId);
+        Hook::call('TemplateManager::fetch', $templateArgs);
+        self::assertTrue($templateManager->getTemplateVars('isChangeRecommendOnlyAllowed'));
+        foreach ([false, true] as $selected) {
+            $edit = new \PKP\controllers\grid\users\stageParticipant\form\AddParticipantForm($submission, 3, $assignmentId);
+            foreach (['userGroupId' => $this->group->id, 'userId' => $this->userId, 'recommendOnly' => $selected] as $key => $value) {
+                $edit->setData($key, $value);
+            }
+            Hook::call('addparticipantform::validate', [$edit, &$result]);
+            self::assertTrue($edit->isValid());
+            $edit->execute();
+            self::assertSame($selected, (bool) \PKP\stageAssignment\StageAssignment::find($assignmentId)->recommendOnly);
+        }
+        $roleForm = new AssistantPermissionsUserGroupForm($this->contextId, $this->group->id);
+        $roleForm->initData();
+        $roleForm->setData('recommendOnly', false);
+        $roleForm->setData('assignedStages', [3]);
+        $roleForm->execute();
+        self::assertTrue((bool) \PKP\stageAssignment\StageAssignment::find($assignmentId)->recommendOnly);
+    }
+
+    public function testNativeParticipantFormRejectsSelfChangesAndSpoofedAssignments(): void
+    {
+        $submission = Repo::submission()->get($this->submissionId);
+        $assignmentId = DB::table('stage_assignments')->where('submission_id', $this->submissionId)->value('stage_assignment_id');
+        $form = new \PKP\controllers\grid\users\stageParticipant\form\AddParticipantForm($submission, 3, $assignmentId);
+        $form->setData('userGroupId', $this->group->id);
+        $form->setData('userId', $this->userId);
+        $form->setData('recommendOnly', false);
+        $result = null;
+        Hook::call('addparticipantform::validate', [$form, &$result]);
+        self::assertFalse($form->isValid());
+        self::assertTrue((bool) \PKP\stageAssignment\StageAssignment::find($assignmentId)->recommendOnly);
+        $actorId = (int) DB::table('users')->where('user_id', '<>', $this->userId)->value('user_id');
+        $manager = UserGroup::withContextIds([$this->contextId])->withRoleIds([Role::ROLE_ID_MANAGER])->first();
+        DB::table('user_user_groups')->updateOrInsert(
+            ['user_group_id' => $manager->id, 'user_id' => $actorId],
+            ['date_end' => null]
+        );
+        $actorRequest = $this->request([], $actorId);
+        Registry::set('request', $actorRequest);
+        $form = new \PKP\controllers\grid\users\stageParticipant\form\AddParticipantForm($submission, 3, $assignmentId);
+        $form->setData('userGroupId', $this->group->id);
+        $form->setData('userId', $this->userId + 100000);
+        Hook::call('addparticipantform::validate', [$form, &$result]);
+        self::assertFalse($form->isValid());
     }
 
     public function testDiscussionFormRejectsAnAuthorAsRecipient(): void
@@ -466,6 +573,7 @@ class AccessIntegrationTest extends TestCase
 
     public function testFileOptionPersistsIndependentlyAndCanBeDisabled(): void
     {
+        DB::table('stage_assignments')->where('submission_id', $this->submissionId)->update(['recommend_only' => false]);
         $this->group->recommendOnly = false;
         $this->group->{Access::BLOCK_CONTACT} = false;
         $this->group->{Access::RESTRICT_FILES} = true;
@@ -488,7 +596,7 @@ class AccessIntegrationTest extends TestCase
         $form->execute();
         $rules = (new Access())->restrictions($this->contextId, $this->userId, $this->submissionId, 3);
         self::assertFalse($rules->restrictFiles);
-        self::assertTrue($rules->recommendOnly);
+        self::assertFalse($rules->recommendOnly);
         self::assertSame(
             AuthorizationDecisionManager::AUTHORIZATION_NOT_APPLICABLE,
             (new RequestPolicy($request, 'wizard.fileUpload.FileUploadWizardHandler', 'uploadFile'))->effect()

@@ -10,12 +10,12 @@ crie ou edite qualquer papel de nível **Assistant**. O nome do papel é livre.
 
 - **Apenas recomendar uma decisão:** habilita recomendações ao editor nas etapas de avaliação interna e
   externa, usando os controles, a página e o fluxo nativos do OMP (mensagem aos editores,
-  discussão interna e registro da recomendação). Não há formulário nem endpoint próprios de recomendação. Impede decisões finais, gestão de avaliações/avaliadores,
-  alteração de anexos do parecerista e edição, substituição ou exclusão de arquivos existentes.
-  Nas listas de arquivos, mantém apenas a ação **Mais informações**, além do download.
-  Envio e seleção de arquivos ficam indisponíveis, inclusive por chamadas diretas ao servidor.
-  A discussão da recomendação inclui somente
-  o conselheiro e os editores decisores elegíveis.
+  discussão interna e registro da recomendação). Não há formulário nem endpoint próprios
+  de recomendação. Impede decisões finais e gestão de avaliações/avaliadores e participantes.
+  A discussão da recomendação inclui somente o conselheiro e os editores decisores elegíveis.
+- **Restringir arquivos a download e Mais informações:** impede envio, seleção, edição, substituição
+  e exclusão de arquivos, inclusive por chamadas diretas ao servidor. Mantém apenas consulta e download,
+  incluindo anexos de pareceres. No fluxo de recomendação, não permite anexar arquivos.
 - **Impedir comunicação com autores e pareceristas:** mantém suas identidades visíveis, mas impede
   notificações diretas, seleção como destinatários de discussões e respostas em discussões que já
   os incluam. Também bloqueia operações de avaliação que enviariam mensagens automaticamente.
@@ -23,15 +23,19 @@ crie ou edite qualquer papel de nível **Assistant**. O nome do papel é livre.
   não seja autor nem parecerista da submissão, mesmo acumulando papéis. Menus sem ações permitidas
   ficam ocultos. A comunicação interna também continua disponível pelas discussões com a equipe editorial.
 
-As opções são independentes. Ative ambas para o perfil de conselho solicitado. As restrições são
+As três opções são independentes. Ative todas para o perfil de conselho solicitado. As restrições são
 aplicadas no servidor e na interface, por editora, submissão e etapa atribuída. Uma atribuição restrita
 prevalece sobre outros papéis do mesmo usuário **na mesma etapa**. O plugin não concede acesso a
 submissões não atribuídas, nem capacidades editoriais a um autor/parecerista da própria submissão.
 
 As recomendações exigem uma submissão em avaliação, a rodada atual e ao menos um editor decisor
 atribuído. Se algum editor decisor também for autor ou parecerista, a recomendação é recusada
-para impedir contato pelo fluxo nativo. CC/BCC e anexos não estão disponíveis ao conselheiro. Não alteram a etapa nem o status editorial. Na submissão
+para impedir contato pelo fluxo nativo. CC/BCC não estão disponíveis no fluxo do conselheiro; os anexos dependem da opção de arquivos. Não alteram a etapa nem o status editorial. Na submissão
 inicial, edição e produção não existem recomendações nativas disponibilizadas por este plugin.
+
+A nova opção de arquivos fica desmarcada em papéis existentes. Para conservar o perfil de consulta,
+marque-a explicitamente: “Apenas recomendar uma decisão” não aplica mais limites aos arquivos.
+Sem a opção de arquivos, valem as permissões nativas do OMP; o plugin não concede novas permissões.
 
 Nenhum arquivo do núcleo é modificado. Desativar o plugin remove suas restrições adicionais; dados,
 opções dos papéis e recomendações registradas são preservados. As restrições não abrangem comunicação

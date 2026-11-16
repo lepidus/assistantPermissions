@@ -101,3 +101,21 @@ na avaliação externa; a avaliação interna não foi exercitada pelo navegador
   autor retornaram status false. Os testes transacionais cobrem também editor/autor e editor/parecerista.
 - Cobertura final: 28 testes PHP/110 asserções e 15 testes JavaScript, incluindo listas distintas por
   etapa, preservação das identidades e independência entre restrição de contato e de gestão.
+
+## Opção independente de restrição de arquivos — issue 974
+
+- Nova opção Assistant `editorialAdvisorRestrictFiles`: Restringir arquivos a download e Mais informações.
+  É independente de recommendOnly e blockContact; ausente/desmarcada significa falso. Não há migração
+  automática: papéis existentes precisam marcar a opção para manter o perfil de arquivos somente leitura.
+- Formulário e schema persistem a opção por papel, inclusive sem etapas selecionadas. As restrições
+  são agregadas por editora/submissão/etapa e associação Assistant ativa, sem depender do nome do papel.
+- A opção controla componentes legacy, API de arquivos, capacidades do grid de anexos de pareceres,
+  os seis FileManagers e anexos da recomendação nativa. recommendOnly mantém apenas suas restrições
+  editoriais e de gestão; sem restrictFiles, operações de arquivos permanecem sujeitas ao core.
+- Testes cobrem as oito combinações das três opções, persistência/desativação, renderização do campo,
+  criação/edição sem etapas e desacoplamento dos anexos da recomendação.
+- O servidor local de navegador usado nas etapas anteriores não estava ativo nesta execução.
+  Foram executados o formulário real e a integração SQL com rollback; não foi repetido o fluxo em navegador.
+
+Resultado desta etapa: 32 testes PHP/172 asserções e 16 testes JavaScript aprovados;
+sintaxe, estilo, traduções e diff aprovados. Sem alterações no núcleo ou no esquema do banco.

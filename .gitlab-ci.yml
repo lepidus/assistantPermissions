@@ -1,0 +1,22 @@
+variables:
+  PLUGIN_NAME: 'assistantPermissions'
+
+include:
+  - project: 'documentacao-e-tarefas/modelosparaintegracaocontinua'
+    ref: stable-3_5_0
+    file:
+      - 'templates/groups/pkp_plugin.yml'
+      - 'templates/groups/omp/unit_tests.yml'
+
+plugin_javascript_tests:
+  stage: plugin
+  needs: []
+  image: $CI_IMAGE_NODE
+  rules:
+    - if: $CI_COMMIT_TAG
+      when: never
+    - when: on_success
+  script:
+    - cmp resources/js/assistantPermissions.js public/build/assistantPermissions.js
+    - npm run build
+    - npm test

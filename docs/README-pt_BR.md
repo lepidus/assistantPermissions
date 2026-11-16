@@ -1,6 +1,6 @@
 [English](../README.md) | Português Brasileiro
 
-# Permissões de Assistentes
+# Permissões de Assistente
 
 Permite configurar papéis de **Assistente de Adição** para consultar submissões e pareceres,
 recomendar decisões e restringir arquivos e comunicação. As identidades dos autores e pareceristas
@@ -10,7 +10,7 @@ Compatível com **OMP 3.5.0.x e PHP 8.2**.
 
 ## Configuração
 
-1. Em **Configurações → Website → Plugins → Enviar novo plugin**, instale o pacote `.tar.gz` e habilite **Permissões de Assistentes**.
+1. Em **Configurações → Website → Plugins → Enviar novo plugin**, instale o pacote `.tar.gz` e habilite **Permissões de Assistente**.
 2. Em **Configurações → Usuários e Papéis → Papéis**, crie ou edite um papel com nível **Assistente de Adição**. O nome do papel é livre.
 3. Selecione **Avaliação interna** e **Avaliação externa** e marque as opções desejadas:
 

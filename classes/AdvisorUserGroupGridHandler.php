@@ -29,6 +29,7 @@ class AdvisorUserGroupGridHandler extends UserGroupGridHandler
         if (!$form->validate()) {
             return new JSONMessage(true, $form->fetch($request));
         }
+
         $form->execute();
         $json = DAO::getDataChangedEvent();
         $json->setGlobalEvent('userGroupUpdated');

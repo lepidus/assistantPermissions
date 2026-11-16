@@ -36,6 +36,7 @@ class AdvisorUserGroupForm extends UserGroupForm
         foreach ([Access::BLOCK_CONTACT, Access::RESTRICT_FILES] as $option) {
             $group->{$option} = $group->roleId == Role::ROLE_ID_ASSISTANT && (bool) $this->getData($option);
         }
+
         return $group;
     }
 

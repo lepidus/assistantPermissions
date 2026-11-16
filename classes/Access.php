@@ -18,18 +18,15 @@ class Access
     /** Restrictions apply if any active Assistant assignment is restricted, regardless of its name. */
     public function restrictions(int $contextId, int $userId, ?int $submissionId = null, ?int $stageId = null): Restrictions
     {
-        $key = $contextId . ':' . $userId;
-        $groups = $this->groupsByUser[$key] ??= UserGroup::withContextIds([$contextId])
-            ->withRoleIds([Role::ROLE_ID_ASSISTANT])
-            ->whereHas('userUserGroups', fn ($q) => $q->withActive()->withUserId($userId))
-            ->with(['userGroupStages', 'stageAssignments' => fn ($q) => $q->withUserId($userId)])
-            ->get();
+        $groups = $this->activeAssistantGroups($contextId, $userId);
+
         if ($submissionId !== null) {
             $stageId ??= (int) DB::table('submissions')->where('submission_id', $submissionId)->value('stage_id');
             $groups = $groups->filter(fn ($group) =>
                 $group->stageAssignments->contains('submissionId', $submissionId)
                 && $group->userGroupStages->contains('stageId', $stageId));
         }
+
         return new Restrictions(
             $groups->contains(fn ($g) => (bool) $g->recommendOnly),
             $groups->contains(fn ($g) => (bool) $g->{self::BLOCK_CONTACT}),
@@ -37,9 +34,21 @@ class Access
         );
     }
 
+    private function activeAssistantGroups(int $contextId, int $userId)
+    {
+        $key = $contextId . ':' . $userId;
+
+        return $this->groupsByUser[$key] ??= UserGroup::withContextIds([$contextId])
+            ->withRoleIds([Role::ROLE_ID_ASSISTANT])
+            ->whereHas('userUserGroups', fn ($q) => $q->withActive()->withUserId($userId))
+            ->with(['userGroupStages', 'stageAssignments' => fn ($q) => $q->withUserId($userId)])
+            ->get();
+    }
+
     public function canRecommend(int $contextId, int $userId, int $submissionId, int $stageId): bool
     {
         $submission = Repo::submission()->get($submissionId);
+
         if (!$submission || (int) $submission->getData('contextId') !== $contextId
             || (int) $submission->getData('stageId') !== $stageId) {
             return false;
@@ -52,6 +61,7 @@ class Access
                 ->filterByReviewerIds([$userId])->getCount()) {
             return false;
         }
+
         $groupIds = UserGroup::withContextIds([$contextId])->withRoleIds([Role::ROLE_ID_ASSISTANT])
             ->isRecommendOnly(true)
             ->whereHas('userGroupStages', fn ($q) => $q->where('stage_id', $stageId))

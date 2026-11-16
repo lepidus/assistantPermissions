@@ -29,6 +29,7 @@ class AdvisorSubmissionController extends SubmissionController
         if (static::getRouteActionName($args[0]) !== 'addDecision') {
             return false;
         }
+
         $this->addPolicy(new UserRequiredPolicy($request));
         $this->addPolicy(new ContextAccessPolicy($request, $roleAssignments));
         $this->addPolicy(new SubmissionAccessPolicy($request, $args, $roleAssignments));

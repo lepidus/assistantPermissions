@@ -30,6 +30,7 @@ class AdvisorDecisionHandler extends DecisionHandler
             && (int) $request->getUserVar('submissionId') !== (int) ($args[0] ?? 0)) {
             return false;
         }
+
         $this->addPolicy(new UserRequiredPolicy($request));
         $this->addPolicy(new ContextAccessPolicy($request, $roleAssignments));
         $this->addPolicy(new SubmissionRequiredPolicy($request, $args, 'submissionId'));

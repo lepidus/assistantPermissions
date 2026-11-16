@@ -15,19 +15,23 @@ class DiscussionHooks
         if (!$query || !$request->getUser() || !$request->getContext()) {
             return false;
         }
+
         $access = new Access();
         if (!$access->restrictions($request->getContext()->getId(), $request->getUser()->getId(), (int) $query->assocId, (int) $query->stageId)->blockContact) {
             return false;
         }
+
         $participants = $form->getData('users');
         if (!is_array($participants)) {
             $participants = QueryParticipant::withQueryId($query->id)->pluck('user_id')->all();
         }
+
         if (array_intersect($access->forbiddenParticipants((int) $query->assocId), array_map('intval', $participants))) {
             $form->addError('users', __('plugins.generic.editorialAdvisor.denied'));
             // Continue the normal form lifecycle so OMP also displays its error notification.
             return false;
         }
+
         return false;
     }
 }

@@ -29,6 +29,7 @@ class RequestPolicy extends AuthorizationPolicy
         if (!$context || !$user) {
             return AuthorizationDecisionManager::AUTHORIZATION_NOT_APPLICABLE;
         }
+
         $access = new Access();
         $targets = $this->targets();
         foreach ($targets ?: [[null, null]] as [$submissionId, $stageId]) {
@@ -63,6 +64,7 @@ class RequestPolicy extends AuthorizationPolicy
                 }
             }
         }
+
         return AuthorizationDecisionManager::AUTHORIZATION_NOT_APPLICABLE;
     }
 
@@ -73,6 +75,7 @@ class RequestPolicy extends AuthorizationPolicy
             : in_array(strtolower($this->operation), $readOperations, true)) {
             return false;
         }
+
         $fileStages = [(int) $this->parameter('fileStage')];
         foreach (['submissionFileId', 'revisedFileId'] as $fileParameter) {
             if (!($id = (int) $this->parameter($fileParameter))) {
@@ -81,6 +84,7 @@ class RequestPolicy extends AuthorizationPolicy
             $file = \APP\facades\Repo::submissionFile()->get($id);
             $fileStages[] = (int) $file?->getData('fileStage');
         }
+
         return in_array(\PKP\submissionFile\SubmissionFile::SUBMISSION_FILE_REVIEW_ATTACHMENT, $fileStages, true);
     }
 
@@ -90,6 +94,7 @@ class RequestPolicy extends AuthorizationPolicy
             // Match the core write path: the request body takes precedence over the query string.
             return app(\Illuminate\Http\Request::class)->input($name);
         }
+
         return $this->controller
             ? $this->controller->getParameter($name, $this->request->getUserVar($name))
             : $this->request->getUserVar($name);
@@ -105,6 +110,7 @@ class RequestPolicy extends AuthorizationPolicy
             $id = (int) $this->parameter('submissionId');
             return $apiPath === 'submissions' && $id ? [[$id, null]] : [];
         }
+
         foreach ([
             'queryId' => ['queries', 'query_id', 'assoc_id'],
             'reviewAssignmentId' => ['review_assignments', 'review_id', 'submission_id'],
@@ -121,6 +127,7 @@ class RequestPolicy extends AuthorizationPolicy
                 }
             }
         }
+
         foreach (['submissionFileId', 'revisedFileId'] as $fileParameter) {
             if (!($id = (int) $this->parameter($fileParameter))) {
                 continue;
@@ -134,6 +141,7 @@ class RequestPolicy extends AuthorizationPolicy
                 $targets[] = [(int) $file->getData('submissionId'), $stageId === null ? null : (int) $stageId];
             }
         }
+
         if ((int) $this->parameter('assocType') === \APP\core\Application::ASSOC_TYPE_REVIEW_ASSIGNMENT
             && ($id = (int) $this->parameter('assocId'))) {
             $review = DB::table('review_assignments')->where('review_id', $id)->first();
@@ -141,6 +149,7 @@ class RequestPolicy extends AuthorizationPolicy
                 $targets[] = [(int) $review->submission_id, (int) $review->stage_id];
             }
         }
+
         $submissionId = (int) $this->parameter('submissionId');
         if ($submissionId && ((!$this->controller && (int) $this->parameter('stageId'))
             || !in_array($submissionId, array_column($targets, 0), true))) {
@@ -148,6 +157,7 @@ class RequestPolicy extends AuthorizationPolicy
             $stageId = $this->controller ? null : ((int) $this->parameter('stageId') ?: null);
             $targets[] = [$submissionId, $stageId];
         }
+
         return $targets;
     }
 }

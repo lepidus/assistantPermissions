@@ -16,6 +16,7 @@ class Restrictions
         if ($this->recommendOnly && str_contains($component, 'reviewer')) {
             return in_array($operation, ['fetchgrid', 'fetchrow', 'readreview', 'reviewhistory'], true);
         }
+
         if ($this->blockContact && str_contains($component, 'reviewer')
             && in_array($operation, [
                 'sendemail', 'thankreviewer', 'editthankreviewer', 'sendreminder', 'editreminder',
@@ -25,10 +26,12 @@ class Restrictions
             ], true)) {
             return false;
         }
+
         if ($this->recommendOnly && str_contains($component, 'stageparticipant')
             && in_array($operation, ['saveparticipant', 'deleteparticipant', 'addparticipant'], true)) {
             return false;
         }
+
         if ($this->restrictFiles && str_contains($component, 'file')) {
             return in_array($operation, [
                 'fetchgrid', 'fetchrow', 'fetch', 'viewfile', 'downloadfile', 'downloadallfiles',
@@ -36,10 +39,12 @@ class Restrictions
                 'viewinformationcenter', 'viewhistory', 'viewnotes', 'listnotes',
             ], true);
         }
+
         if ($this->recommendOnly && (str_contains($component, 'decision')
             || str_contains($component, 'reviewround'))) {
             return in_array($operation, ['fetchgrid', 'fetchrow', 'fetch'], true);
         }
+
         return true;
     }
 
@@ -48,19 +53,24 @@ class Restrictions
         if (in_array(strtoupper($method), ['GET', 'HEAD', 'OPTIONS'], true)) {
             return true;
         }
+
         $path = strtolower($path);
         if ($this->restrictFiles && preg_match('~(?:^|/)submissions/\d+/files(?:/|$)~', $path)) {
             return false;
         }
+
         if ($this->blockContact && preg_match('~(?:^|/)(_?emails?|messages?|reviews?|reviewers?|reviewassignments)(?:/|$)~', $path)) {
             return false;
         }
+
         if ($this->recommendOnly && preg_match('~(?:^|/)(decisions?|reviews?|reviewers?|reviewassignments|reviewrounds)(?:/|$)~', $path)) {
             return false;
         }
+
         if ($this->recommendOnly && preg_match('~/submissions/\d+(?:/publications/\d+/(?:publish|unpublish))?/?$~', '/' . ltrim($path, '/'))) {
             return false;
         }
+
         return !(strtoupper($method) === 'DELETE'
             && (($this->restrictFiles && str_contains($path, 'file'))
                 || ($this->recommendOnly && !preg_match('~(?:^|/)files(?:/|$)~', $path)

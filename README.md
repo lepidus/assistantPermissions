@@ -13,7 +13,7 @@ crie ou edite qualquer papel de nível **Assistant**. O nome do papel é livre.
   discussão interna e registro da recomendação). Não há formulário nem endpoint próprios
   de recomendação. Impede decisões finais e gestão de avaliações/avaliadores e participantes.
   A discussão da recomendação inclui somente o conselheiro e os editores decisores elegíveis.
-- **Restringir arquivos a download e Mais informações:** impede envio, seleção, edição, substituição
+- **Permitir apenas a consulta de arquivos:** impede envio, seleção, edição, substituição
   e exclusão de arquivos, inclusive por chamadas diretas ao servidor. Mantém apenas consulta e download,
   incluindo anexos de pareceres. No fluxo de recomendação, não permite anexar arquivos.
 - **Impedir comunicação com autores e pareceristas:** mantém suas identidades visíveis, mas impede

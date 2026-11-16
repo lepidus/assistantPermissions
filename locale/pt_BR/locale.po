@@ -44,4 +44,7 @@ msgid "plugins.generic.editorialAdvisor.reviewerRecommendation.6"
 msgstr "Ver comentários"
 
 msgid "plugins.generic.editorialAdvisor.restrictFiles"
-msgstr "Restringir arquivos a download e Mais informações"
+msgstr "Permitir apenas a consulta de arquivos"
+
+msgid "plugins.generic.editorialAdvisor.restrictFiles.description"
+msgstr "Permite visualizar detalhes e baixar arquivos. Impede enviar, selecionar, editar, substituir ou excluir arquivos."

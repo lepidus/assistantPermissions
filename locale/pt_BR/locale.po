@@ -4,7 +4,7 @@ msgstr ""
 "Language: pt_BR\n"
 
 msgid "plugins.generic.assistantPermissions.name"
-msgstr "Permissões de Assistentes"
+msgstr "Permissões de Assistente"
 
 msgid "plugins.generic.assistantPermissions.description"
 msgstr "Adiciona opções independentes de recomendação, acesso a arquivos e comunicação aos papéis de Assistente de Adição no OMP."
@@ -14,13 +14,6 @@ msgstr "Impedir comunicação com autores e pareceristas (manter suas identidade
 
 msgid "plugins.generic.assistantPermissions.denied"
 msgstr "Esta ação não é permitida para este papel editorial."
-
-
-
-
-
-
-
 
 msgid "plugins.generic.assistantPermissions.readOnlyDiscussion"
 msgstr "Esta discussão inclui autor ou parecerista e está disponível apenas para leitura."

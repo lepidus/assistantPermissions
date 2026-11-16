@@ -15,13 +15,6 @@ msgstr "Prevent communication with authors and reviewers (keep their identities 
 msgid "plugins.generic.assistantPermissions.denied"
 msgstr "This action is not permitted for this editorial role."
 
-
-
-
-
-
-
-
 msgid "plugins.generic.assistantPermissions.readOnlyDiscussion"
 msgstr "This discussion includes an author or reviewer and is available for reading only."
 

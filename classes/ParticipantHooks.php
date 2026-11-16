@@ -45,14 +45,37 @@ class ParticipantHooks
     public function validate(string $name, array $args): bool
     {
         $form = $args[0];
+        $assignment = $form->_assignmentId ? StageAssignment::find($form->_assignmentId) : null;
         $group = UserGroup::findById((int) $form->getData('userGroupId'));
-        if (!$group || $group->roleId != Role::ROLE_ID_ASSISTANT) {
+        if ($form->getData('message')) {
+            $request = Application::get()->getRequest();
+            $submission = $form->getSubmission();
+            $access = new Access();
+            $rules = $request->getContext() && $request->getUser() ? $access->restrictions(
+                $request->getContext()->getId(),
+                $request->getUser()->getId(),
+                $submission->getId(),
+                $form->getStageId()
+            ) : null;
+            if ($rules?->blockContact
+                && (in_array($group?->roleId, [Role::ROLE_ID_AUTHOR, Role::ROLE_ID_REVIEWER], true)
+                    || in_array(
+                        (int) $form->getData('userId'),
+                        $access->forbiddenParticipants($submission->getId()),
+                        true
+                    ))) {
+                $form->addError('message', __('plugins.generic.assistantPermissions.denied'));
+            }
+        }
+        // Inspect the actual assignment before trusting the submitted group's role.
+        if ($group?->roleId != Role::ROLE_ID_ASSISTANT
+            && $assignment?->userGroup?->roleId != Role::ROLE_ID_ASSISTANT) {
             return false;
         }
 
-        $assignment = $form->_assignmentId ? StageAssignment::find($form->_assignmentId) : null;
         $submission = $form->getSubmission();
-        $valid = (int) $group->contextId === (int) $submission->getData('contextId')
+        $valid = $group && $group->roleId == Role::ROLE_ID_ASSISTANT
+            && (int) $group->contextId === (int) $submission->getData('contextId')
             && $group->userGroupStages->contains('stageId', $form->getStageId())
             && (!$form->_assignmentId || ($assignment
                 && (int) $assignment->submissionId === $submission->getId()

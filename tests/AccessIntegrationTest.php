@@ -316,6 +316,29 @@ class AccessIntegrationTest extends TestCase
         self::assertFalse($form->isValid());
     }
 
+    public function testParticipantEditCannotHideAnAssistantAssignmentBehindAnotherRole(): void
+    {
+        $assignmentId = DB::table('stage_assignments')->where('submission_id', $this->submissionId)->value('stage_assignment_id');
+        $manager = UserGroup::withContextIds([$this->contextId])->withRoleIds([Role::ROLE_ID_MANAGER])->first();
+        DB::table('user_user_groups')->updateOrInsert(
+            ['user_group_id' => $manager->id, 'user_id' => $this->userId],
+            ['date_end' => null]
+        );
+        $otherSubmissionId = DB::table('submissions')->insertGetId([
+            'context_id' => $this->contextId, 'stage_id' => 3, 'status' => 1, 'locale' => 'en', 'submission_progress' => '',
+        ]);
+        $otherSubmission = Repo::submission()->get($otherSubmissionId);
+        $form = new \PKP\controllers\grid\users\stageParticipant\form\AddParticipantForm($otherSubmission, 3, $assignmentId);
+        $form->setData('userGroupId', $manager->id);
+        $form->setData('userId', $this->userId);
+        $form->setData('recommendOnly', false);
+        $result = null;
+        Hook::call('addparticipantform::validate', [$form, &$result]);
+        self::assertFalse($form->isValid());
+        self::assertArrayHasKey('recommendOnly', $form->getErrorsArray());
+        self::assertTrue((bool) \PKP\stageAssignment\StageAssignment::find($assignmentId)->recommendOnly);
+    }
+
     public function testDiscussionFormRejectsAnAuthorAsRecipient(): void
     {
         $otherUserId = (int) DB::table('users')->where('user_id', '<>', $this->userId)->value('user_id');
@@ -569,6 +592,237 @@ class AccessIntegrationTest extends TestCase
             );
         }
         self::assertNotContains($editorId, (new Access())->notificationRecipients($this->submissionId, 3));
+    }
+
+    public function testContactRestrictionFollowsTheActualNoteAndBlocksDiscussionAttachments(): void
+    {
+        $authorId = (int) DB::table('users')->where('user_id', '<>', $this->userId)->value('user_id');
+        $authorGroup = UserGroup::withContextIds([$this->contextId])->withRoleIds([Role::ROLE_ID_AUTHOR])->first();
+        DB::table('stage_assignments')->insert([
+            'submission_id' => $this->submissionId, 'user_group_id' => $authorGroup->id,
+            'user_id' => $authorId, 'date_assigned' => date('Y-m-d H:i:s'),
+        ]);
+        $queries = [];
+        foreach ([false, true] as $withAuthor) {
+            $query = \PKP\query\Query::create([
+                'assocType' => \APP\core\Application::ASSOC_TYPE_SUBMISSION,
+                'assocId' => $this->submissionId, 'stageId' => 3, 'seq' => 1,
+            ]);
+            if ($withAuthor) {
+                \PKP\query\QueryParticipant::create(['queryId' => $query->id, 'userId' => $authorId]);
+            }
+            $queries[] = $query;
+        }
+        $note = \PKP\note\Note::create([
+            'assocType' => \APP\core\Application::ASSOC_TYPE_QUERY, 'assocId' => $queries[1]->id,
+            'userId' => $this->userId, 'contents' => 'Original',
+        ]);
+        $this->group->{Access::RESTRICT_FILES} = false;
+        $this->group->save();
+        foreach ([
+            ['grid.queries.QueryNotesGridHandler', 'insertNote', $queries[0]->id],
+            ['grid.files.query.ManageQueryNoteFilesGridHandler', 'updateQueryNoteFiles', $queries[1]->id],
+            ['wizard.fileUpload.FileUploadWizardHandler', 'uploadFile', $queries[1]->id],
+        ] as [$component, $operation, $queryId]) {
+            $request = $this->request(['submissionId' => $this->submissionId, 'queryId' => $queryId, 'noteId' => $note->id, 'stageId' => 3]);
+            self::assertSame(AuthorizationPolicy::AUTHORIZATION_DENY, (new RequestPolicy($request, $component, $operation))->effect());
+        }
+        self::assertSame('Original', $note->fresh()->contents);
+        self::assertSame(AuthorizationDecisionManager::AUTHORIZATION_NOT_APPLICABLE, (new RequestPolicy(
+            $this->request(['queryId' => $queries[1]->id, 'noteId' => $note->id]),
+            'grid.files.query.ManageQueryNoteFilesGridHandler',
+            'fetchGrid'
+        ))->effect());
+    }
+
+    public function testParticipantMessagesCannotBypassTheContactRestriction(): void
+    {
+        DB::table('stage_assignments')->where('submission_id', $this->submissionId)->update(['recommend_only' => false]);
+        $authorId = (int) DB::table('users')->where('user_id', '<>', $this->userId)->value('user_id');
+        $authorGroup = UserGroup::withContextIds([$this->contextId])->withRoleIds([Role::ROLE_ID_AUTHOR])->first();
+        $submission = Repo::submission()->get($this->submissionId);
+        $form = new \PKP\controllers\grid\users\stageParticipant\form\AddParticipantForm($submission, 3);
+        $form->setData('userGroupId', $authorGroup->id);
+        $form->setData('userId', $authorId);
+        $form->setData('message', 'Forbidden message');
+        $result = null;
+        Hook::call('addparticipantform::validate', [$form, &$result]);
+        self::assertFalse($form->isValid());
+        $withoutMessage = new \PKP\controllers\grid\users\stageParticipant\form\AddParticipantForm($submission, 3);
+        $withoutMessage->setData('userGroupId', $authorGroup->id);
+        $withoutMessage->setData('userId', $authorId);
+        Hook::call('addparticipantform::validate', [$withoutMessage, &$result]);
+        self::assertTrue($withoutMessage->isValid());
+    }
+
+    public function testFileUploadRestrictionsFollowTheDestinationReviewRound(): void
+    {
+        DB::table('user_group_stage')->where('user_group_id', $this->group->id)->update(['stage_id' => 2]);
+        $roundId = DB::table('review_rounds')->insertGetId([
+            'submission_id' => $this->submissionId, 'stage_id' => 2, 'round' => 1, 'status' => 1,
+        ]);
+        $params = ['submissionId' => $this->submissionId,
+            'fileStage' => \PKP\submissionFile\SubmissionFile::SUBMISSION_FILE_INTERNAL_REVIEW_FILE,
+            'assocType' => \APP\core\Application::ASSOC_TYPE_REVIEW_ROUND, 'assocId' => $roundId,
+        ];
+        $controller = $this->getMockBuilder(\PKP\API\v1\submissions\PKPSubmissionFileController::class)
+            ->onlyMethods(['getParameter'])->getMock();
+        $controller->method('getParameter')->willReturnCallback(fn ($name, $default = null) => $params[$name] ?? $default);
+        $previousHttp = app(\Illuminate\Http\Request::class);
+        try {
+            app()->instance(\Illuminate\Http\Request::class, \Illuminate\Http\Request::create('/submissions/' . $this->submissionId . '/files', 'POST', $params));
+            self::assertSame(AuthorizationPolicy::AUTHORIZATION_DENY, (new RequestPolicy($this->request($params), controller: $controller))->effect());
+            $this->group->{Access::RESTRICT_FILES} = false;
+            $this->group->save();
+            self::assertSame(AuthorizationDecisionManager::AUTHORIZATION_NOT_APPLICABLE, (new RequestPolicy($this->request($params), controller: $controller))->effect());
+        } finally {
+            app()->instance(\Illuminate\Http\Request::class, $previousHttp);
+        }
+    }
+
+    public function testFileDestinationIncludesAttachmentsCopiesAndDependentFiles(): void
+    {
+        DB::table('submissions')->where('submission_id', $this->submissionId)->update(['stage_id' => 2]);
+        $file = (array) DB::table('submission_files')->first();
+        unset($file['submission_file_id']);
+        $file['submission_id'] = $this->submissionId;
+        $file['file_stage'] = \PKP\submissionFile\SubmissionFile::SUBMISSION_FILE_SUBMISSION;
+        $sourceId = DB::table('submission_files')->insertGetId($file);
+        $file['file_stage'] = \PKP\submissionFile\SubmissionFile::SUBMISSION_FILE_FINAL;
+        $parentId = DB::table('submission_files')->insertGetId($file);
+        $previousHttp = app(\Illuminate\Http\Request::class);
+        try {
+            foreach ([
+                [3, 'POST', ['fileStage' => \PKP\submissionFile\SubmissionFile::SUBMISSION_FILE_ATTACHMENT]],
+                [4, 'PUT', ['submissionFileId' => $sourceId, 'toFileStage' => \PKP\submissionFile\SubmissionFile::SUBMISSION_FILE_COPYEDIT]],
+                [4, 'POST', ['fileStage' => \PKP\submissionFile\SubmissionFile::SUBMISSION_FILE_DEPENDENT,
+                    'assocType' => \APP\core\Application::ASSOC_TYPE_SUBMISSION_FILE, 'assocId' => $parentId]],
+            ] as [$stageId, $method, $params]) {
+                DB::table('user_group_stage')->where('user_group_id', $this->group->id)->update(['stage_id' => $stageId]);
+                $params['submissionId'] = $this->submissionId;
+                $controller = $this->getMockBuilder(\PKP\API\v1\submissions\PKPSubmissionFileController::class)
+                    ->onlyMethods(['getParameter'])->getMock();
+                $controller->method('getParameter')->willReturnCallback(fn ($name, $default = null) => $params[$name] ?? $default);
+                $path = '/submissions/' . $this->submissionId . '/files' . ($method === 'PUT' ? '/' . $sourceId . '/copy' : '');
+                app()->instance(\Illuminate\Http\Request::class, \Illuminate\Http\Request::create($path, $method, $params));
+                $this->group->{Access::RESTRICT_FILES} = true;
+                $this->group->save();
+                self::assertSame(AuthorizationPolicy::AUTHORIZATION_DENY, (new RequestPolicy($this->request($params), controller: $controller))->effect());
+                $this->group->{Access::RESTRICT_FILES} = false;
+                $this->group->save();
+                self::assertSame(AuthorizationDecisionManager::AUTHORIZATION_NOT_APPLICABLE, (new RequestPolicy($this->request($params), controller: $controller))->effect());
+            }
+        } finally {
+            app()->instance(\Illuminate\Http\Request::class, $previousHttp);
+        }
+    }
+
+    public function testSubmissionDocumentRestrictionsIgnoreSpoofedWorkflowStage(): void
+    {
+        $request = $this->request(['submissionId' => $this->submissionId, 'stageId' => 2]);
+        foreach (['saveFile', 'deleteFile', 'uploadFile'] as $operation) {
+            self::assertSame(AuthorizationPolicy::AUTHORIZATION_DENY, (new RequestPolicy(
+                $request,
+                'grid.files.submissionDocuments.SubmissionDocumentsFilesGridHandler',
+                $operation
+            ))->effect());
+        }
+        self::assertSame(AuthorizationDecisionManager::AUTHORIZATION_NOT_APPLICABLE, (new RequestPolicy(
+            $request,
+            'grid.files.submissionDocuments.SubmissionDocumentsFilesGridHandler',
+            'fetchGrid'
+        ))->effect());
+        $fileId = DB::table('library_files')->insertGetId([
+            'context_id' => $this->contextId, 'submission_id' => $this->submissionId,
+            'file_name' => 'audit-document.txt', 'original_file_name' => 'audit-document.txt',
+            'file_type' => 'text/plain', 'file_size' => 0, 'type' => 1, 'public_access' => 0,
+            'date_uploaded' => date('Y-m-d H:i:s'), 'date_modified' => date('Y-m-d H:i:s'),
+        ]);
+        $otherSubmissionId = DB::table('submissions')->insertGetId([
+            'context_id' => $this->contextId, 'stage_id' => 2, 'status' => 1, 'locale' => 'en', 'submission_progress' => '',
+        ]);
+        $spoofed = $this->request(['submissionId' => $otherSubmissionId, 'fileId' => $fileId, 'stageId' => 2]);
+        self::assertSame(AuthorizationPolicy::AUTHORIZATION_DENY, (new RequestPolicy(
+            $spoofed,
+            'grid.files.submissionDocuments.SubmissionDocumentsFilesGridHandler',
+            'deleteFile'
+        ))->effect());
+        self::assertTrue(DB::table('library_files')->where('file_id', $fileId)->exists());
+        $this->group->{Access::RESTRICT_FILES} = false;
+        $this->group->save();
+        self::assertSame(AuthorizationDecisionManager::AUTHORIZATION_NOT_APPLICABLE, (new RequestPolicy(
+            $request,
+            'grid.files.submissionDocuments.SubmissionDocumentsFilesGridHandler',
+            'saveFile'
+        ))->effect());
+    }
+
+    public function testNativeDecisionActionsRespectIndependentContactAndFileRestrictions(): void
+    {
+        DB::table('stage_assignments')->where('submission_id', $this->submissionId)->update(['recommend_only' => false]);
+        $controller = $this->getMockBuilder(\APP\API\v1\submissions\SubmissionController::class)
+            ->onlyMethods(['getParameter'])->getMock();
+        $controller->method('getParameter')->willReturnCallback(fn ($name, $default = null) =>
+            $name === 'submissionId' ? $this->submissionId : $default);
+        $previousHttp = app(\Illuminate\Http\Request::class);
+        try {
+            foreach ([
+                [true, false, ['id' => 'notifyAuthors', 'recipients' => [123]]],
+                [true, false, ['id' => 'notifyReviewers', 'recipients' => [123]]],
+                [true, false, ['id' => 'discussion', 'cc' => ['author@example.org']]],
+                [true, false, ['id' => 'discussion', 'bcc' => ['reviewer@example.org']]],
+                [false, true, ['id' => 'notifyAuthors', 'attachments' => [['submissionFileId' => 12]]]],
+                [false, true, ['id' => 'discussion', 'attachments' => [['temporaryFileId' => 12]]]],
+            ] as [$blockContact, $restrictFiles, $action]) {
+                $this->group->{Access::BLOCK_CONTACT} = $blockContact;
+                $this->group->{Access::RESTRICT_FILES} = $restrictFiles;
+                $this->group->save();
+                $http = \Illuminate\Http\Request::create('/submissions/' . $this->submissionId . '/decisions', 'POST', ['actions' => [$action]]);
+                app()->instance(\Illuminate\Http\Request::class, $http);
+                self::assertSame(AuthorizationPolicy::AUTHORIZATION_DENY, (new RequestPolicy($this->request(), controller: $controller))->effect());
+            }
+            $this->group->{Access::BLOCK_CONTACT} = true;
+            $this->group->{Access::RESTRICT_FILES} = false;
+            $this->group->save();
+            $editorId = (int) DB::table('users')->where('user_id', '<>', $this->userId)->value('user_id');
+            $editorGroup = UserGroup::withContextIds([$this->contextId])->withRoleIds([Role::ROLE_ID_MANAGER])->first();
+            DB::table('stage_assignments')->insert([
+                'submission_id' => $this->submissionId, 'user_group_id' => $editorGroup->id,
+                'user_id' => $editorId, 'recommend_only' => false, 'date_assigned' => date('Y-m-d H:i:s'),
+            ]);
+            DB::table('user_group_stage')->updateOrInsert(
+                ['user_group_id' => $editorGroup->id, 'stage_id' => 3],
+                ['context_id' => $this->contextId]
+            );
+            foreach ([[], [['submissionFileId' => 12]]] as $attachments) {
+                $action = ['id' => 'discussion', 'recipients' => [$editorId], 'attachments' => $attachments];
+                app()->instance(\Illuminate\Http\Request::class, \Illuminate\Http\Request::create(
+                    '/submissions/' . $this->submissionId . '/decisions',
+                    'POST',
+                    ['actions' => [$action]]
+                ));
+                self::assertSame(AuthorizationDecisionManager::AUTHORIZATION_NOT_APPLICABLE, (new RequestPolicy($this->request(), controller: $controller))->effect());
+            }
+            $authorGroup = UserGroup::withContextIds([$this->contextId])->withRoleIds([Role::ROLE_ID_AUTHOR])->first();
+            DB::table('stage_assignments')->insert([
+                'submission_id' => $this->submissionId, 'user_group_id' => $authorGroup->id,
+                'user_id' => $editorId, 'date_assigned' => date('Y-m-d H:i:s'),
+            ]);
+            app()->instance(\Illuminate\Http\Request::class, \Illuminate\Http\Request::create(
+                '/submissions/' . $this->submissionId . '/decisions',
+                'POST',
+                ['actions' => [['id' => 'discussion']]]
+            ));
+            self::assertSame(AuthorizationPolicy::AUTHORIZATION_DENY, (new RequestPolicy($this->request(), controller: $controller))->effect());
+            app()->instance(\Illuminate\Http\Request::class, \Illuminate\Http\Request::create(
+                '/submissions/' . $this->submissionId . '/decisions',
+                'POST',
+                ['actions' => []]
+            ));
+            self::assertSame(AuthorizationDecisionManager::AUTHORIZATION_NOT_APPLICABLE, (new RequestPolicy($this->request(), controller: $controller))->effect());
+        } finally {
+            app()->instance(\Illuminate\Http\Request::class, $previousHttp);
+        }
     }
 
     public function testFileOptionPersistsIndependentlyAndCanBeDisabled(): void

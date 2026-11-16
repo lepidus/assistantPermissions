@@ -1,64 +1,37 @@
-# Editorial Advisor
+English | [Português Brasileiro](docs/README-pt_BR.md)
 
-Plugin para **OMP 3.5 / PHP 8.2**, iniciado a partir de `pluginTemplate` (commit `4f6d1d4`).
-Referência: `documentacao-e-tarefas/scielo#974`.
+# Assistant Permissions
 
-## Configuração
+Configures **Assistant** roles to read submissions and existing reviews, recommend decisions,
+and restrict file operations and communication. Authors and reviewers remain identifiable.
+The editor makes the final decision.
 
-Instale o pacote como plugin genérico e ative-o na editora. Em **Configurações → Usuários e papéis → Papéis**,
-crie ou edite qualquer papel de nível **Assistant**. O nome do papel é livre.
+Requires **OMP 3.5.0.x and PHP 8.2**.
 
-- **Apenas recomendar uma decisão:** habilita recomendações ao editor nas etapas de avaliação interna e
-  externa, usando os controles, a página e o fluxo nativos do OMP (mensagem aos editores,
-  discussão interna e registro da recomendação). Não há formulário nem endpoint próprios
-  de recomendação. Impede decisões finais e gestão de avaliações/avaliadores e participantes.
-  A discussão da recomendação inclui somente o conselheiro e os editores decisores elegíveis.
-- **Permitir apenas a consulta de arquivos:** impede envio, seleção, edição, substituição
-  e exclusão de arquivos, inclusive por chamadas diretas ao servidor. Mantém apenas consulta e download,
-  incluindo anexos de pareceres. No fluxo de recomendação, não permite anexar arquivos.
-- **Impedir comunicação com autores e pareceristas:** mantém suas identidades visíveis, mas impede
-  notificações diretas, seleção como destinatários de discussões e respostas em discussões que já
-  os incluam. Também bloqueia operações de avaliação que enviariam mensagens automaticamente.
-  **Notificar** permanece disponível para a equipe editorial atribuída à etapa, desde que o destinatário
-  não seja autor nem parecerista da submissão, mesmo acumulando papéis. Menus sem ações permitidas
-  ficam ocultos. A comunicação interna também continua disponível pelas discussões com a equipe editorial.
+## Configuration
 
-As três opções são independentes. Ative todas para o perfil de conselho solicitado. As restrições são
-aplicadas no servidor e na interface, por editora, submissão e etapa atribuída. Uma atribuição restrita
-prevalece sobre outros papéis do mesmo usuário **na mesma etapa**. O plugin não concede acesso a
-submissões não atribuídas, nem capacidades editoriais a um autor/parecerista da própria submissão.
+1. Under **Settings → Website → Plugins → Upload a new plugin**, install the `.tar.gz` package and enable **Assistant Permissions**.
+2. Under **Settings → Users & Roles → Roles**, create or edit a role with the **Assistant** permission level. The role can have any name.
+3. Select **Internal Review** and **External Review**, then enable the options you need:
 
-As recomendações exigem uma submissão em avaliação, a rodada atual e ao menos um editor decisor
-atribuído. Se algum editor decisor também for autor ou parecerista, a recomendação é recusada
-para impedir contato pelo fluxo nativo. CC/BCC não estão disponíveis no fluxo do conselheiro; os anexos dependem da opção de arquivos. Não alteram a etapa nem o status editorial. Na submissão
-inicial, edição e produção não existem recomendações nativas disponibilizadas por este plugin.
+| Option | Effect |
+| --- | --- |
+| **This role is only allowed to recommend a review decision…** | Enables recommendations. Prevents final decisions and management of reviewers, review rounds and participants. |
+| **Allow read-only access to files** | Keeps downloads and **More Information**. Blocks uploading, selecting, editing, replacing and deleting files, and attaching files to recommendations. |
+| **Prevent communication with authors and reviewers (keep their identities visible)** | Blocks contact with authors and reviewers. Allows **Notify** for editorial staff assigned to the stage. |
 
-A nova opção de arquivos fica desmarcada em papéis existentes. Para conservar o perfil de consulta,
-marque-a explicitamente: “Apenas recomendar uma decisão” não aplica mais limites aos arquivos.
-Sem a opção de arquivos, valem as permissões nativas do OMP; o plugin não concede novas permissões.
+4. Save the role and assign the user to it under **Users & Roles**.
+5. Open the submission and add the user under **Participants**, using that role.
 
-Nenhum arquivo do núcleo é modificado. Desativar o plugin remove suas restrições adicionais; dados,
-opções dos papéis e recomendações registradas são preservados. As restrições não abrangem comunicação
-fora do OMP nem substituem a administração dos acessos privilegiados da instalação.
+Enable **all three options** for the complete restricted assistant profile. They are independent:
+Recommend-only does not restrict files. Select the file option explicitly for existing roles.
+With the options disabled, the role keeps its native permissions. The plugin does not create roles automatically.
 
-## Desenvolvimento e testes
+## Credits and license
 
-O JavaScript usa Vue e os pontos de extensão já fornecidos pelo OMP, sem dependências npm adicionais.
-O build copia o código distribuível para `public/build/editorialAdvisor.js`.
+Developed by [Lepidus Tecnologia](https://lepidus.com.br/).
+Licensed under the [GNU General Public License v3.0](LICENSE).
 
-```sh
-npm run build
-npm test
-```
+Copyright (c) 2026 Lepidus Tecnologia
 
-Com o plugin em `plugins/generic/editorialAdvisor` de uma instalação OMP 3.5 de testes com dataset
-inicializado, execute a partir da raiz do OMP:
-
-```sh
-php lib/pkp/lib/vendor/bin/phpunit -c lib/pkp/tests/phpunit.xml --no-coverage \
-  plugins/generic/editorialAdvisor/tests
-```
-
-Os testes de integração criam fixtures dentro de transações e fazem rollback; não restauram nem
-apagam a base. Use o PHP 8.2 do ambiente. Consulte [VALIDATION.md](VALIDATION.md) para a cobertura
-real da implementação.
+Copyright (c) 2026 SciELO

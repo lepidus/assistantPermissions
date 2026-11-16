@@ -1,6 +1,6 @@
 <?php
 
-namespace APP\plugins\generic\editorialAdvisor\classes;
+namespace APP\plugins\generic\assistantPermissions\classes;
 
 use APP\core\Application;
 use APP\facades\Repo;
@@ -16,7 +16,7 @@ class RecommendationAccessPolicy extends AuthorizationPolicy
 {
     public function __construct(private PKPRequest $request, private bool $writing = false)
     {
-        parent::__construct('plugins.generic.editorialAdvisor.denied');
+        parent::__construct('plugins.generic.assistantPermissions.denied');
     }
 
     public function effect(): int

@@ -1,6 +1,6 @@
 <?php
 
-namespace APP\plugins\generic\editorialAdvisor\classes;
+namespace APP\plugins\generic\assistantPermissions\classes;
 
 /** Rules shared by the legacy component handlers and the REST API. */
 class Restrictions

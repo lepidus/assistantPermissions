@@ -19,22 +19,22 @@ function setup(submission, submissionStageId = submission?.stageId) {
             },
         },
     };
-    vm.runInNewContext(readFileSync(`${__dirname}/../public/build/editorialAdvisor.js`, 'utf8'), {pkp});
+    vm.runInNewContext(readFileSync(`${__dirname}/../public/build/assistantPermissions.js`, 'utf8'), {pkp});
     return hooks;
 }
-test('advisor keeps reviewer names/content and only read actions', () => {
-    const hooks = setup({editorialAdvisor: {recommendOnly: true}});
+test('assistantPermissions keeps reviewer names/content and only read actions', () => {
+    const hooks = setup({assistantPermissions: {recommendOnly: true}});
     const actions = [{name: 'reviewerReadReview'}, {name: 'reviewerEmailReviewer'}, {name: 'reviewerCancelReviewer'}];
     assert.deepEqual(hooks['reviewerManager.getItemActions'](actions), actions.slice(0, 1));
     assert.equal(hooks['reviewerManager.getTopItems']([{}]).length, 0);
 });
 test('no-contact alone preserves unrelated actions', () => {
-    const hooks = setup({editorialAdvisor: {blockContact: true}});
+    const hooks = setup({assistantPermissions: {blockContact: true}});
     const actions = [{name: 'reviewerReviewHistory'}, {name: 'reviewerEmailReviewer'}];
     assert.deepEqual(hooks['reviewerManager.getItemActions'](actions), actions.slice(0, 1));
 });
 test('recommend-only keeps only file details and hides final decisions', () => {
-    const submission = {editorialAdvisor: {recommendOnly: true, restrictFiles: true}};
+    const submission = {assistantPermissions: {recommendOnly: true, restrictFiles: true}};
     const hooks = setup(submission);
     const actions = [{name: 'fileDelete'}, {name: 'fileEdit'}, {name: 'fileSeeNotes'}];
     for (const namespace of fileManagerNamespaces) {
@@ -45,33 +45,33 @@ test('recommend-only keeps only file details and hides final decisions', () => {
 });
 
 test('completed reviews retain the OMP read-only details action', () => {
-    const hooks = setup({editorialAdvisor: {recommendOnly: true}});
+    const hooks = setup({assistantPermissions: {recommendOnly: true}});
     const actions = [{name: 'reviewerReviewDetails'}, {name: 'reviewerThankReviewer'}];
     assert.deepEqual(hooks['reviewerManager.getItemActions'](actions), actions.slice(0, 1));
 });
-test('advisor preserves native recommendation controls while hiding final decisions', () => {
-    const submission = {stageId: 3, editorialAdvisor: {recommendOnly: true}};
+test('assistantPermissions preserves native recommendation controls while hiding final decisions', () => {
+    const submission = {stageId: 3, assistantPermissions: {recommendOnly: true}};
     const hooks = setup(submission);
     const items = [{component: 'WorkflowRecommendOnlyControls'}, {component: 'WorkflowActionButton'}];
     assert.deepEqual(hooks['workflow.getActionItems'](items, {submission, selectedStageId: 3}), items.slice(0, 1));
     assert.equal(hooks['workflow.getActionItems']([], {submission, selectedStageId: 3}).length, 0);
 });
 test('a restriction in another stage does not hide current-stage actions', () => {
-    const submission = {stageId: 3, editorialAdvisor: {recommendOnly: true,
+    const submission = {stageId: 3, assistantPermissions: {recommendOnly: true,
         stages: {2: {recommendOnly: false}, 3: {recommendOnly: true}}}};
     const hooks = setup(submission);
     const actions = [{props: {action: 'test'}}];
     assert.equal(hooks['workflow.getActionItems'](actions, {submission, selectedMenuState: {stageId: 2}}).length, 1);
 });
 test('participant identities remain but notify and management actions are removed', () => {
-    const submission = {editorialAdvisor: {recommendOnly: true, blockContact: true}};
+    const submission = {assistantPermissions: {recommendOnly: true, blockContact: true}};
     const hooks = setup(submission);
     const actions = [{name: 'participantNotify'}, {name: 'participantRemove'}];
     assert.equal(hooks['participantManager.getItemActions'](actions, {submission, submissionStageId: 3}).length, 0);
 });
 
 test('unrestricted file managers preserve their original actions', () => {
-    const hooks = setup({stageId: 3, editorialAdvisor: {recommendOnly: false}}, 3);
+    const hooks = setup({stageId: 3, assistantPermissions: {recommendOnly: false}}, 3);
     const actions = [{name: 'fileDelete'}, {name: 'fileEdit'}, {name: 'fileSeeNotes'}];
     for (const ns of fileManagerNamespaces) {
         const filter = hooks[`fileManager_${ns}.getItemActions`] || (items => items);
@@ -79,7 +79,7 @@ test('unrestricted file managers preserve their original actions', () => {
     }
 });
 test('file restrictions follow the displayed stage', () => {
-    const submission = {stageId: 3, editorialAdvisor: {recommendOnly: true, stages: {2:{recommendOnly:false, restrictFiles:false}, 3:{recommendOnly:true, restrictFiles:true}}}};
+    const submission = {stageId: 3, assistantPermissions: {recommendOnly: true, stages: {2:{recommendOnly:false, restrictFiles:false}, 3:{recommendOnly:true, restrictFiles:true}}}};
     const hooks = setup(submission, 2);
     const actions = [{name: 'fileEdit'}, {name: 'fileDelete'}, {name:'fileSeeNotes'}];
     const filter = hooks['fileManager_EDITOR_REVIEW_FILES.getItemActions'] || (items => items);
@@ -87,7 +87,7 @@ test('file restrictions follow the displayed stage', () => {
 });
 
 test('restricted file managers hide upload and selection', () => {
-    const hooks = setup({stageId: 3, editorialAdvisor: {restrictFiles: true}});
+    const hooks = setup({stageId: 3, assistantPermissions: {restrictFiles: true}});
     const actions = [{props: {action: 'fileUpload'}}, {props: {action: 'fileSelectUpload'}}];
     for (const ns of fileManagerNamespaces) {
         const filter = hooks[`fileManager_${ns}.getTopItems`] || (items => items);
@@ -97,8 +97,8 @@ test('restricted file managers hide upload and selection', () => {
 test('file upload actions remain available outside the restricted stage and for no-contact alone', () => {
     const actions = [{props: {action: 'fileUpload'}}, {props: {action: 'fileSelectUpload'}}];
     for (const submission of [
-        {stageId: 3, editorialAdvisor: {blockContact: true}},
-        {stageId: 3, editorialAdvisor: {recommendOnly: true, stages: {2: {recommendOnly: false}}}},
+        {stageId: 3, assistantPermissions: {blockContact: true}},
+        {stageId: 3, assistantPermissions: {recommendOnly: true, stages: {2: {recommendOnly: false}}}},
     ]) {
         const hooks = setup(submission, 2);
         for (const ns of fileManagerNamespaces) {
@@ -109,26 +109,26 @@ test('file upload actions remain available outside the restricted stage and for 
 });
 
 test('participant notification remains for editorial team but not forbidden participants', () => {
-    const submission = {stageId: 3, editorialAdvisor: {recommendOnly: true, blockContact: true, notifyParticipantIds: [2]}};
+    const submission = {stageId: 3, assistantPermissions: {recommendOnly: true, blockContact: true, notifyParticipantIds: [2]}};
     const hooks = setup(submission);
     const actions = [{name: 'participantNotify'}, {name: 'participantEdit'}, {name: 'participantRemove'}, {name: 'participantLoginAs'}];
     assert.deepEqual(hooks['participantManager.getItemActions'](actions, {submission, submissionStageId: 3, participant: {id: 2}}), actions.slice(0, 1));
     assert.equal(hooks['participantManager.getItemActions'](actions, {submission, submissionStageId: 3, participant: {id: 3}}).length, 0);
 });
 test('empty participant menus are marked without changing identities or nonempty menus', () => {
-    const submission = {stageId: 3, editorialAdvisor: {recommendOnly: true, blockContact: true, notifyParticipantIds: [2]}};
+    const submission = {stageId: 3, assistantPermissions: {recommendOnly: true, blockContact: true, notifyParticipantIds: [2]}};
     const hooks = setup(submission);
     const items = [{component: 'ParticipantManagerItemInfoName', props: {class: 'existing-class'}}];
     const mark = hooks['participantManager.getItemInfoItems'];
     assert.equal(typeof mark, 'function');
     const empty = mark(items, {submission, submissionStageId: 3, participant: {id: 3}});
-    assert.equal(empty[0].props['data-advisor-empty-actions'], true);
+    assert.equal(empty[0].props['data-assistantPermissions-empty-actions'], true);
     assert.equal(empty[0].props.class, 'existing-class');
     assert.deepEqual(mark(items, {submission, submissionStageId: 3, participant: {id: 2}}), items);
 });
 
 test('contact restriction preserves management unless recommend-only also applies', () => {
-    const submission = {stageId: 3, editorialAdvisor: {blockContact: true, notifyParticipantIds: [2]}};
+    const submission = {stageId: 3, assistantPermissions: {blockContact: true, notifyParticipantIds: [2]}};
     const hooks = setup(submission);
     const actions = [{name: 'participantNotify'}, {name: 'participantEdit'}];
     assert.deepEqual(hooks['participantManager.getItemActions'](actions, {submission, submissionStageId: 3, participant: {id: 2}}), actions);
@@ -136,7 +136,7 @@ test('contact restriction preserves management unless recommend-only also applie
 });
 
 test('participant notifications follow the displayed stage allowlist', () => {
-    const submission = {stageId: 3, editorialAdvisor: {blockContact: true, notifyParticipantIds: [2], stages: {
+    const submission = {stageId: 3, assistantPermissions: {blockContact: true, notifyParticipantIds: [2], stages: {
         2: {blockContact: true, notifyParticipantIds: [7]}, 3: {blockContact: true, notifyParticipantIds: [2]},
     }}};
     const hooks = setup(submission, 2);
@@ -149,7 +149,7 @@ test('file actions depend only on the separate file restriction', () => {
     const actions = [{name: 'fileEdit'}, {name: 'fileDelete'}, {name: 'fileSeeNotes'}];
     for (const recommendOnly of [false, true]) {
         for (const restrictFiles of [false, true]) {
-            const hooks = setup({stageId: 3, editorialAdvisor: {recommendOnly, restrictFiles}});
+            const hooks = setup({stageId: 3, assistantPermissions: {recommendOnly, restrictFiles}});
             for (const ns of fileManagerNamespaces) {
                 assert.deepEqual(hooks[`fileManager_${ns}.getItemActions`](actions), restrictFiles ? actions.slice(2) : actions);
                 assert.equal(hooks[`fileManager_${ns}.getTopItems`]([{}]).length, restrictFiles ? 0 : 1);

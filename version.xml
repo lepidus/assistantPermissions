@@ -10,9 +10,9 @@
   * Plugin version information.
   -->
 <version>
-	<application>editorialAdvisor</application>
+	<application>assistantPermissions</application>
 	<type>plugins.generic</type>
 	<release>1.0.0.0</release>
 	<date>2026-11-13</date>
-	<class>EditorialAdvisorPlugin</class>
+	<class>AssistantPermissionsPlugin</class>
 </version>

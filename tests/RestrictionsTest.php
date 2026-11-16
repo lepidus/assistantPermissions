@@ -1,8 +1,8 @@
 <?php
 
-namespace APP\plugins\generic\editorialAdvisor\tests;
+namespace APP\plugins\generic\assistantPermissions\tests;
 
-use APP\plugins\generic\editorialAdvisor\classes\Restrictions;
+use APP\plugins\generic\assistantPermissions\classes\Restrictions;
 use PHPUnit\Framework\TestCase;
 
 require_once __DIR__ . '/../classes/Restrictions.php';

@@ -1,28 +1,28 @@
 <?php
 
 /**
- * Editorial advisor permissions for OMP.
+ * Assistant permissions for OMP.
  * Derived from PKP pluginTemplate (4f6d1d4), distributed under GNU GPL v3.
  */
 
-namespace APP\plugins\generic\editorialAdvisor;
+namespace APP\plugins\generic\assistantPermissions;
 
 use APP\core\Application;
-use APP\plugins\generic\editorialAdvisor\classes\Access;
-use APP\plugins\generic\editorialAdvisor\classes\AdvisorDecisionHandler;
-use APP\plugins\generic\editorialAdvisor\classes\AdvisorSubmissionController;
-use APP\plugins\generic\editorialAdvisor\classes\AdvisorUserGroupGridHandler;
-use APP\plugins\generic\editorialAdvisor\classes\DiscussionHooks;
-use APP\plugins\generic\editorialAdvisor\classes\RequestPolicy;
-use APP\plugins\generic\editorialAdvisor\classes\SubmissionPermissions;
-use APP\plugins\generic\editorialAdvisor\classes\TemplateHooks;
+use APP\plugins\generic\assistantPermissions\classes\Access;
+use APP\plugins\generic\assistantPermissions\classes\AssistantPermissionsDecisionHandler;
+use APP\plugins\generic\assistantPermissions\classes\AssistantPermissionsSubmissionController;
+use APP\plugins\generic\assistantPermissions\classes\AssistantPermissionsUserGroupGridHandler;
+use APP\plugins\generic\assistantPermissions\classes\DiscussionHooks;
+use APP\plugins\generic\assistantPermissions\classes\RequestPolicy;
+use APP\plugins\generic\assistantPermissions\classes\SubmissionPermissions;
+use APP\plugins\generic\assistantPermissions\classes\TemplateHooks;
 use APP\submission\maps\Schema;
 use PKP\core\APIRouter;
 use PKP\plugins\GenericPlugin;
 use PKP\plugins\Hook;
 use PKP\security\Role;
 
-class EditorialAdvisorPlugin extends GenericPlugin
+class AssistantPermissionsPlugin extends GenericPlugin
 {
     private ?Access $access = null;
 
@@ -86,7 +86,7 @@ class EditorialAdvisorPlugin extends GenericPlugin
 
         if ($request->getContext() && $request->getUser()
             && (new Access())->restrictions($request->getContext()->getId(), $request->getUser()->getId(), $submissionId)->recommendOnly) {
-            $args[3] = new AdvisorDecisionHandler();
+            $args[3] = new AssistantPermissionsDecisionHandler();
             return true;
         }
 
@@ -101,7 +101,7 @@ class EditorialAdvisorPlugin extends GenericPlugin
             && preg_match('~/submissions/(\d+)/decisions/?$~', $request->getRequestPath(), $match)
             && $request->getContext() && $request->getUser()
             && (new Access())->restrictions($request->getContext()->getId(), $request->getUser()->getId(), (int) $match[1])->recommendOnly) {
-            $router->registerPluginApiControllers([new AdvisorSubmissionController()]);
+            $router->registerPluginApiControllers([new AssistantPermissionsSubmissionController()]);
         }
 
         Hook::add('APIHandler::endpoints::' . $router->getEntity(), $this->applyApiRestrictions(...));
@@ -111,7 +111,7 @@ class EditorialAdvisorPlugin extends GenericPlugin
 
     private function applyApiRestrictions($name, $controller, $handler): bool
     {
-        if (!$controller instanceof AdvisorSubmissionController) {
+        if (!$controller instanceof AssistantPermissionsSubmissionController) {
             $controller->addPolicy(new RequestPolicy(Application::get()->getRequest(), controller: $controller));
         }
 
@@ -123,7 +123,7 @@ class EditorialAdvisorPlugin extends GenericPlugin
         [$component, $operation] = $args;
 
         if ($component === 'grid.settings.roles.UserGroupGridHandler') {
-            $args[2] = new AdvisorUserGroupGridHandler();
+            $args[2] = new AssistantPermissionsUserGroupGridHandler();
             return true;
         }
 
@@ -174,11 +174,11 @@ class EditorialAdvisorPlugin extends GenericPlugin
 
     public function getDisplayName(): string
     {
-        return __('plugins.generic.editorialAdvisor.name');
+        return __('plugins.generic.assistantPermissions.name');
     }
 
     public function getDescription(): string
     {
-        return __('plugins.generic.editorialAdvisor.description');
+        return __('plugins.generic.assistantPermissions.description');
     }
 }

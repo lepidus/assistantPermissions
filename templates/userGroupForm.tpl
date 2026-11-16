@@ -56,8 +56,8 @@
 			{fbvFormSection title="settings.roles.roleOptions" list="true"}
 				{fbvElement type="checkbox" name="showTitle" id="showTitle" checked=$showTitle label="settings.roles.showTitles"}
 				{fbvElement type="checkbox" name="permitSelfRegistration" id="permitSelfRegistration" checked=$permitSelfRegistration label="settings.roles.permitSelfRegistration"}
-				{fbvElement type="checkbox" name="editorialAdvisorRestrictFiles" id="editorialAdvisorRestrictFiles" checked=$editorialAdvisorRestrictFiles label="plugins.generic.editorialAdvisor.restrictFiles"}
-				{fbvElement type="checkbox" name="editorialAdvisorBlockContact" id="editorialAdvisorBlockContact" checked=$editorialAdvisorBlockContact label="plugins.generic.editorialAdvisor.blockContact"}
+				{fbvElement type="checkbox" name="assistantPermissionsRestrictFiles" id="assistantPermissionsRestrictFiles" checked=$assistantPermissionsRestrictFiles label="plugins.generic.assistantPermissions.restrictFiles"}
+				{fbvElement type="checkbox" name="assistantPermissionsBlockContact" id="assistantPermissionsBlockContact" checked=$assistantPermissionsBlockContact label="plugins.generic.assistantPermissions.blockContact"}
                 {fbvElement type="checkbox" name="recommendOnly" id="recommendOnly" checked=$recommendOnly label="settings.roles.recommendOnly"}
 				{fbvElement type="checkbox" name="permitMetadataEdit" id="permitMetadataEdit" checked=$permitMetadataEdit label="settings.roles.permitMetadataEdit"}
 				{fbvElement type="checkbox" name="masthead" id="masthead" checked=$masthead label="settings.roles.masthead"}
@@ -73,13 +73,13 @@
 <script>
 {literal}
 $(function() {
-    const toggleAdvisor = function() {
-        const assistant = String($('#roleId').val()) === '{/literal}{$advisorAssistantRoleId}{literal}';
-        $('#editorialAdvisorBlockContact, #editorialAdvisorRestrictFiles').closest('li').toggle(assistant);
-        if (!assistant) $('#editorialAdvisorBlockContact, #editorialAdvisorRestrictFiles').prop('checked', false);
+    const toggleAssistantPermissions = function() {
+        const assistant = String($('#roleId').val()) === '{/literal}{$assistantPermissionsAssistantRoleId}{literal}';
+        $('#assistantPermissionsBlockContact, #assistantPermissionsRestrictFiles').closest('li').toggle(assistant);
+        if (!assistant) $('#assistantPermissionsBlockContact, #assistantPermissionsRestrictFiles').prop('checked', false);
     };
-    $('#roleId').on('change.editorialAdvisor', toggleAdvisor);
-    toggleAdvisor();
+    $('#roleId').on('change.assistantPermissions', toggleAssistantPermissions);
+    toggleAssistantPermissions();
 });
 {/literal}
 </script>

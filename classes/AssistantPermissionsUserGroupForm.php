@@ -1,13 +1,13 @@
 <?php
 
-namespace APP\plugins\generic\editorialAdvisor\classes;
+namespace APP\plugins\generic\assistantPermissions\classes;
 
 use PKP\controllers\grid\settings\roles\form\UserGroupForm;
 use PKP\security\Role;
 use PKP\stageAssignment\StageAssignment;
 use PKP\userGroup\UserGroup;
 
-class AdvisorUserGroupForm extends UserGroupForm
+class AssistantPermissionsUserGroupForm extends UserGroupForm
 {
     public function initData()
     {

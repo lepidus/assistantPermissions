@@ -1,13 +1,13 @@
 <?php
 
-namespace APP\plugins\generic\editorialAdvisor\tests;
+namespace APP\plugins\generic\assistantPermissions\tests;
 
 use APP\core\Request;
 use APP\facades\Repo;
-use APP\plugins\generic\editorialAdvisor\classes\Access;
-use APP\plugins\generic\editorialAdvisor\classes\AdvisorUserGroupForm;
-use APP\plugins\generic\editorialAdvisor\classes\RequestPolicy;
-use APP\plugins\generic\editorialAdvisor\EditorialAdvisorPlugin;
+use APP\plugins\generic\assistantPermissions\AssistantPermissionsPlugin;
+use APP\plugins\generic\assistantPermissions\classes\Access;
+use APP\plugins\generic\assistantPermissions\classes\AssistantPermissionsUserGroupForm;
+use APP\plugins\generic\assistantPermissions\classes\RequestPolicy;
 use Illuminate\Support\Facades\DB;
 use PHPUnit\Framework\TestCase;
 use PKP\core\Registry;
@@ -40,9 +40,9 @@ class AccessIntegrationTest extends TestCase
         $this->userId = (int) DB::table('users')->value('user_id');
         $fixtureRequest = $this->request();
         Registry::set('request', $fixtureRequest);
-        $plugin = $this->getMockBuilder(EditorialAdvisorPlugin::class)->onlyMethods(['getEnabled'])->getMock();
+        $plugin = $this->getMockBuilder(AssistantPermissionsPlugin::class)->onlyMethods(['getEnabled'])->getMock();
         $plugin->method('getEnabled')->willReturn(true);
-        $plugin->register('generic', 'plugins/generic/editorialAdvisor', $this->contextId);
+        $plugin->register('generic', 'plugins/generic/assistantPermissions', $this->contextId);
         app('schema')->get('userGroup', true);
         $this->submissionId = DB::table('submissions')->insertGetId([
             'context_id' => $this->contextId, 'stage_id' => 3, 'status' => 1, 'locale' => 'en', 'submission_progress' => '',
@@ -155,12 +155,12 @@ class AccessIntegrationTest extends TestCase
 
     public function testAssistantOptionIsAvailableToNewRoles(): void
     {
-        $form = new AdvisorUserGroupForm($this->contextId, 0);
+        $form = new AssistantPermissionsUserGroupForm($this->contextId, 0);
         self::assertContains(Role::ROLE_ID_ASSISTANT, $form->getRecommendOnlyRoles());
     }
     public function testRoleFormCreatesAssistantWithBothOptionsAndRendersThem(): void
     {
-        $form = new AdvisorUserGroupForm($this->contextId, 0);
+        $form = new AssistantPermissionsUserGroupForm($this->contextId, 0);
         $form->initData();
         foreach ([
             'roleId' => Role::ROLE_ID_ASSISTANT, 'name' => ['en' => 'Counsel with custom name'],
@@ -175,7 +175,7 @@ class AccessIntegrationTest extends TestCase
         self::assertTrue($group->recommendOnly);
         self::assertTrue($group->{Access::BLOCK_CONTACT});
         self::assertTrue($group->{Access::RESTRICT_FILES});
-        $edit = new AdvisorUserGroupForm($this->contextId, $group->id);
+        $edit = new AssistantPermissionsUserGroupForm($this->contextId, $group->id);
         $edit->initData();
         \APP\template\TemplateManager::getManager(Registry::get('request'))->assign([
             'hasSystemNotifications' => false, 'requestOptions' => '{}',
@@ -183,8 +183,8 @@ class AccessIntegrationTest extends TestCase
         ]);
         Registry::get('request')->getSession()->regenerateToken();
         $html = $edit->fetch(Registry::get('request'));
-        self::assertStringContainsString('name="editorialAdvisorBlockContact"', $html);
-        self::assertStringContainsString('name="editorialAdvisorRestrictFiles"', $html);
+        self::assertStringContainsString('name="assistantPermissionsBlockContact"', $html);
+        self::assertStringContainsString('name="assistantPermissionsRestrictFiles"', $html);
         self::assertStringContainsString('name="recommendOnly"', $html);
     }
 
@@ -225,9 +225,9 @@ class AccessIntegrationTest extends TestCase
         );
         $form->setData('users', [$this->userId, $otherUserId]);
         $args = [$form, null];
-        (new \APP\plugins\generic\editorialAdvisor\classes\DiscussionHooks())->validate('queryform::validate', $args);
+        (new \APP\plugins\generic\assistantPermissions\classes\DiscussionHooks())->validate('queryform::validate', $args);
         self::assertFalse($form->isValid());
-        self::assertSame(__('plugins.generic.editorialAdvisor.denied'), $form->getErrorsArray()['users']);
+        self::assertSame(__('plugins.generic.assistantPermissions.denied'), $form->getErrorsArray()['users']);
     }
 
     public function testReviewerAttachmentGridIsReadOnly(): void
@@ -264,7 +264,7 @@ class AccessIntegrationTest extends TestCase
             'requestArgs' => ['submissionId' => $this->submissionId, 'stageId' => 3],
         ]);
         $html = $manager->fetch('controllers/grid/queries/readQuery.tpl');
-        self::assertStringContainsString('data-cy="advisor-readonly-discussion"', $html);
+        self::assertStringContainsString('data-cy="assistantPermissions-readonly-discussion"', $html);
         self::assertStringNotContainsString('add_note', $html);
     }
 
@@ -344,7 +344,7 @@ class AccessIntegrationTest extends TestCase
         $input += ['reviewRoundId' => $roundId, 'decision' => \APP\decision\Decision::RECOMMEND_ACCEPT,
             'actions' => [['id' => 'discussion', 'subject' => 'Recommendation', 'body' => 'Test']]];
         $request = $this->request($input);
-        $policy = new \APP\plugins\generic\editorialAdvisor\classes\RecommendationAccessPolicy($request, $writing);
+        $policy = new \APP\plugins\generic\assistantPermissions\classes\RecommendationAccessPolicy($request, $writing);
         $policy->addAuthorizedContextObject(\APP\core\Application::ASSOC_TYPE_SUBMISSION, Repo::submission()->get($this->submissionId));
         $policy->addAuthorizedContextObject(\APP\core\Application::ASSOC_TYPE_DECISION_TYPE, Repo::decision()->getDecisionType($input['decision']));
         return [$policy, $input, $editorId];
@@ -362,7 +362,7 @@ class AccessIntegrationTest extends TestCase
     {
         [$policy] = $this->recommendationFixture(false, ['decision' => \APP\decision\Decision::ACCEPT]);
         self::assertSame(AuthorizationPolicy::AUTHORIZATION_DENY, $policy->effect());
-        $method = new \ReflectionMethod(\APP\plugins\generic\editorialAdvisor\classes\AdvisorSubmissionController::class, 'addDecision');
+        $method = new \ReflectionMethod(\APP\plugins\generic\assistantPermissions\classes\AssistantPermissionsSubmissionController::class, 'addDecision');
         self::assertSame(\PKP\API\v1\submissions\PKPSubmissionController::class, $method->getDeclaringClass()->getName());
     }
 
@@ -479,7 +479,7 @@ class AccessIntegrationTest extends TestCase
             AuthorizationPolicy::AUTHORIZATION_DENY,
             (new RequestPolicy($request, 'wizard.fileUpload.FileUploadWizardHandler', 'uploadFile'))->effect()
         );
-        $form = new AdvisorUserGroupForm($this->contextId, $this->group->id);
+        $form = new AssistantPermissionsUserGroupForm($this->contextId, $this->group->id);
         $form->initData();
         self::assertTrue($form->getData(Access::RESTRICT_FILES));
         $form->setData(Access::RESTRICT_FILES, false);
@@ -514,7 +514,7 @@ class AccessIntegrationTest extends TestCase
 
     public function testFileOptionIsSavedEvenWithoutAssignedStages(): void
     {
-        $form = new AdvisorUserGroupForm($this->contextId, 0);
+        $form = new AssistantPermissionsUserGroupForm($this->contextId, 0);
         $form->initData();
         foreach (['roleId' => Role::ROLE_ID_ASSISTANT, 'name' => ['en' => 'File restriction without stages'],
             'abbrev' => ['en' => 'FR'], 'assignedStages' => [], Access::RESTRICT_FILES => true] as $key => $value) {
@@ -523,7 +523,7 @@ class AccessIntegrationTest extends TestCase
         $form->execute();
         $group = UserGroup::withContextIds([$this->contextId])->orderByDesc('user_group_id')->first();
         self::assertTrue($group->{Access::RESTRICT_FILES});
-        $edit = new AdvisorUserGroupForm($this->contextId, $group->id);
+        $edit = new AssistantPermissionsUserGroupForm($this->contextId, $group->id);
         $edit->initData();
         $edit->setData(Access::RESTRICT_FILES, false);
         $edit->setData('assignedStages', []);

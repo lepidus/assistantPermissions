@@ -1,6 +1,6 @@
 <?php
 
-namespace APP\plugins\generic\editorialAdvisor\classes;
+namespace APP\plugins\generic\assistantPermissions\classes;
 
 use APP\handler\Handler;
 use PKP\pages\decision\DecisionHandler;
@@ -12,7 +12,7 @@ use PKP\security\authorization\UserRequiredPolicy;
 use PKP\security\Role;
 
 /** Keep record(), its steps and templates native; authorize only assigned Assistant recommenders. */
-class AdvisorDecisionHandler extends DecisionHandler
+class AssistantPermissionsDecisionHandler extends DecisionHandler
 {
     public function __construct()
     {

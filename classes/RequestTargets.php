@@ -1,6 +1,6 @@
 <?php
 
-namespace APP\plugins\generic\editorialAdvisor\classes;
+namespace APP\plugins\generic\assistantPermissions\classes;
 
 use Illuminate\Support\Facades\DB;
 use PKP\core\PKPBaseController;

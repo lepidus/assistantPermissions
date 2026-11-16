@@ -1,7 +1,7 @@
 [
-  "plugins.generic.editorialAdvisor.name",
-  "plugins.generic.editorialAdvisor.description",
-  "plugins.generic.editorialAdvisor.blockContact",
-  "plugins.generic.editorialAdvisor.restrictFiles",
-  "plugins.generic.editorialAdvisor.denied"
+  "plugins.generic.assistantPermissions.name",
+  "plugins.generic.assistantPermissions.description",
+  "plugins.generic.assistantPermissions.blockContact",
+  "plugins.generic.assistantPermissions.restrictFiles",
+  "plugins.generic.assistantPermissions.denied"
 ]

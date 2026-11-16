@@ -1,6 +1,6 @@
 <?php
 
-namespace APP\plugins\generic\editorialAdvisor\classes;
+namespace APP\plugins\generic\assistantPermissions\classes;
 
 use APP\core\Application;
 use PKP\query\QueryParticipant;
@@ -27,7 +27,7 @@ class DiscussionHooks
         }
 
         if (array_intersect($access->forbiddenParticipants((int) $query->assocId), array_map('intval', $participants))) {
-            $form->addError('users', __('plugins.generic.editorialAdvisor.denied'));
+            $form->addError('users', __('plugins.generic.assistantPermissions.denied'));
             // Continue the normal form lifecycle so OMP also displays its error notification.
             return false;
         }

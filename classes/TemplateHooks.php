@@ -1,6 +1,6 @@
 <?php
 
-namespace APP\plugins\generic\editorialAdvisor\classes;
+namespace APP\plugins\generic\assistantPermissions\classes;
 
 use APP\core\Application;
 use APP\template\TemplateManager;
@@ -20,18 +20,18 @@ class TemplateHooks
     {
         $request = Application::get()->getRequest();
 
-        if ($args[1] === 'decision/record.tpl' && $request->getRouter()->getHandler() instanceof AdvisorDecisionHandler) {
+        if ($args[1] === 'decision/record.tpl' && $request->getRouter()->getHandler() instanceof AssistantPermissionsDecisionHandler) {
             $this->prepareRecommendationAttachments($args[0], $request);
 
-            $args[0]->addStyleSheet('advisorRecommendation', $request->getBaseUrl() . '/' . $this->plugin->getPluginPath()
+            $args[0]->addStyleSheet('assistantPermissionsRecommendation', $request->getBaseUrl() . '/' . $this->plugin->getPluginPath()
                 . '/public/styles/nativeRecommendation.css', ['contexts' => ['backend']]);
         }
 
-        $args[0]->addStyleSheet('advisorParticipants', $request->getBaseUrl() . '/' . $this->plugin->getPluginPath()
+        $args[0]->addStyleSheet('assistantPermissionsParticipants', $request->getBaseUrl() . '/' . $this->plugin->getPluginPath()
             . '/public/styles/participants.css', ['contexts' => ['backend']]);
         $args[0]->addJavaScript(
-            'editorialAdvisor',
-            $request->getBaseUrl() . '/' . $this->plugin->getPluginPath() . '/public/build/editorialAdvisor.js',
+            'assistantPermissions',
+            $request->getBaseUrl() . '/' . $this->plugin->getPluginPath() . '/public/build/assistantPermissions.js',
             ['contexts' => ['backend'], 'priority' => TemplateManager::STYLE_SEQUENCE_LAST]
         );
 
@@ -60,7 +60,7 @@ class TemplateHooks
         [$manager, $template] = $args;
 
         if ($template === 'controllers/grid/settings/roles/form/userGroupForm.tpl') {
-            $manager->assign('advisorAssistantRoleId', Role::ROLE_ID_ASSISTANT);
+            $manager->assign('assistantPermissionsAssistantRoleId', Role::ROLE_ID_ASSISTANT);
             $args[4] = $manager->fetch($this->plugin->getTemplateResource('userGroupForm.tpl'));
             return true;
         }
@@ -71,8 +71,8 @@ class TemplateHooks
             if ($review && $request->getContext() && $request->getUser()
                 && (new Access())->restrictions($request->getContext()->getId(), $request->getUser()->getId(), $review->getSubmissionId(), $review->getStageId())->recommendOnly) {
                 $recommendation = (int) $review->getRecommendation();
-                $manager->assign('advisorReviewerRecommendation', $recommendation >= 1 && $recommendation <= 6
-                    ? __('plugins.generic.editorialAdvisor.reviewerRecommendation.' . $recommendation) : '');
+                $manager->assign('assistantPermissionsReviewerRecommendation', $recommendation >= 1 && $recommendation <= 6
+                    ? __('plugins.generic.assistantPermissions.reviewerRecommendation.' . $recommendation) : '');
                 $args[4] = $manager->fetch($this->plugin->getTemplateResource('readReview.tpl'));
                 return true;
             }
@@ -89,7 +89,7 @@ class TemplateHooks
             $query = $manager->getTemplateVars('query');
             if ($query && $this->isReadOnlyQuery($query)) {
                 $participants = \PKP\query\QueryParticipant::withQueryId($query->id)->get();
-                $manager->assign('advisorQueryParticipants', $participants->pluck('user')->filter()->all());
+                $manager->assign('assistantPermissionsQueryParticipants', $participants->pluck('user')->filter()->all());
                 $args[4] = $manager->fetch($this->plugin->getTemplateResource('readQuery.tpl'));
                 return true;
             }

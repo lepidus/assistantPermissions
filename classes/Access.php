@@ -1,6 +1,6 @@
 <?php
 
-namespace APP\plugins\generic\editorialAdvisor\classes;
+namespace APP\plugins\generic\assistantPermissions\classes;
 
 use APP\facades\Repo;
 use Illuminate\Support\Facades\DB;
@@ -10,8 +10,8 @@ use PKP\userGroup\UserGroup;
 
 class Access
 {
-    public const BLOCK_CONTACT = 'editorialAdvisorBlockContact';
-    public const RESTRICT_FILES = 'editorialAdvisorRestrictFiles';
+    public const BLOCK_CONTACT = 'assistantPermissionsBlockContact';
+    public const RESTRICT_FILES = 'assistantPermissionsRestrictFiles';
 
     private array $groupsByUser = [];
 

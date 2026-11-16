@@ -1,30 +1,30 @@
 <?php
 
-namespace APP\plugins\generic\editorialAdvisor\classes;
+namespace APP\plugins\generic\assistantPermissions\classes;
 
 use PKP\controllers\grid\settings\roles\UserGroupGridHandler;
 use PKP\core\JSONMessage;
 use PKP\db\DAO;
 
 /** Keep the core settings authorization; replace only its private form factory. */
-class AdvisorUserGroupGridHandler extends UserGroupGridHandler
+class AssistantPermissionsUserGroupGridHandler extends UserGroupGridHandler
 {
-    private function advisorForm($request): AdvisorUserGroupForm
+    private function assistantPermissionsForm($request): AssistantPermissionsUserGroupForm
     {
         $id = (int) $request->getUserVar('userGroupId');
-        return new AdvisorUserGroupForm($request->getContext()->getId(), $id);
+        return new AssistantPermissionsUserGroupForm($request->getContext()->getId(), $id);
     }
 
     public function editUserGroup($args, $request)
     {
-        $form = $this->advisorForm($request);
+        $form = $this->assistantPermissionsForm($request);
         $form->initData();
         return new JSONMessage(true, $form->fetch($request));
     }
 
     public function updateUserGroup($args, $request)
     {
-        $form = $this->advisorForm($request);
+        $form = $this->assistantPermissionsForm($request);
         $form->readInputData();
         if (!$form->validate()) {
             return new JSONMessage(true, $form->fetch($request));

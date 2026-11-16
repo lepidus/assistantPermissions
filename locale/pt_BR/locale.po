@@ -3,16 +3,16 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Language: pt_BR\n"
 
-msgid "plugins.generic.editorialAdvisor.name"
-msgstr "Conselho editorial"
+msgid "plugins.generic.assistantPermissions.name"
+msgstr "Permissões de Assistentes"
 
-msgid "plugins.generic.editorialAdvisor.description"
-msgstr "Adiciona opções de recomendação e restrição de comunicação aos papéis de nível Assistant no OMP."
+msgid "plugins.generic.assistantPermissions.description"
+msgstr "Adiciona opções independentes de recomendação, acesso a arquivos e comunicação aos papéis de Assistente de Adição no OMP."
 
-msgid "plugins.generic.editorialAdvisor.blockContact"
+msgid "plugins.generic.assistantPermissions.blockContact"
 msgstr "Impedir comunicação com autores e pareceristas (manter suas identidades visíveis)"
 
-msgid "plugins.generic.editorialAdvisor.denied"
+msgid "plugins.generic.assistantPermissions.denied"
 msgstr "Esta ação não é permitida para este papel editorial."
 
 
@@ -22,26 +22,26 @@ msgstr "Esta ação não é permitida para este papel editorial."
 
 
 
-msgid "plugins.generic.editorialAdvisor.readOnlyDiscussion"
+msgid "plugins.generic.assistantPermissions.readOnlyDiscussion"
 msgstr "Esta discussão inclui autor ou parecerista e está disponível apenas para leitura."
 
-msgid "plugins.generic.editorialAdvisor.reviewerRecommendation.1"
+msgid "plugins.generic.assistantPermissions.reviewerRecommendation.1"
 msgstr "Aceitar"
 
-msgid "plugins.generic.editorialAdvisor.reviewerRecommendation.2"
+msgid "plugins.generic.assistantPermissions.reviewerRecommendation.2"
 msgstr "Revisões necessárias"
 
-msgid "plugins.generic.editorialAdvisor.reviewerRecommendation.3"
+msgid "plugins.generic.assistantPermissions.reviewerRecommendation.3"
 msgstr "Submeter novamente para avaliação"
 
-msgid "plugins.generic.editorialAdvisor.reviewerRecommendation.4"
+msgid "plugins.generic.assistantPermissions.reviewerRecommendation.4"
 msgstr "Submeter a outra editora"
 
-msgid "plugins.generic.editorialAdvisor.reviewerRecommendation.5"
+msgid "plugins.generic.assistantPermissions.reviewerRecommendation.5"
 msgstr "Rejeitar"
 
-msgid "plugins.generic.editorialAdvisor.reviewerRecommendation.6"
+msgid "plugins.generic.assistantPermissions.reviewerRecommendation.6"
 msgstr "Ver comentários"
 
-msgid "plugins.generic.editorialAdvisor.restrictFiles"
+msgid "plugins.generic.assistantPermissions.restrictFiles"
 msgstr "Permitir apenas a consulta de arquivos"

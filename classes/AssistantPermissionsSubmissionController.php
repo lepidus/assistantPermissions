@@ -1,6 +1,6 @@
 <?php
 
-namespace APP\plugins\generic\editorialAdvisor\classes;
+namespace APP\plugins\generic\assistantPermissions\classes;
 
 use APP\API\v1\submissions\SubmissionController;
 use Illuminate\Support\Facades\Route;
@@ -15,7 +15,7 @@ use PKP\security\authorization\UserRequiredPolicy;
 use PKP\security\Role;
 
 /** Adapt only the native POST; validation, persistence, discussion and mail remain inherited. */
-class AdvisorSubmissionController extends SubmissionController
+class AssistantPermissionsSubmissionController extends SubmissionController
 {
     public function getGroupRoutes(): void
     {

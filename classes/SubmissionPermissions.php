@@ -1,6 +1,6 @@
 <?php
 
-namespace APP\plugins\generic\editorialAdvisor\classes;
+namespace APP\plugins\generic\assistantPermissions\classes;
 
 use APP\core\Application;
 use APP\submission\Submission;
@@ -39,7 +39,7 @@ class SubmissionPermissions
             }
         }
 
-        $output['editorialAdvisor'] = [
+        $output['assistantPermissions'] = [
             'stages' => $stages,
             'recommendOnly' => $rules->recommendOnly,
             'blockContact' => $rules->blockContact,

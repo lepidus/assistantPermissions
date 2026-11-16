@@ -1,4 +1,4 @@
 /* The native dropdown always renders its trigger, including when every action was removed. */
-[data-cy="participant-manager"] li:has([data-advisor-empty-actions]) button[aria-haspopup="menu"] {
+[data-cy="participant-manager"] li:has([data-assistantPermissions-empty-actions]) button[aria-haspopup="menu"] {
     display: none;
 }

@@ -1,7 +1,7 @@
 /* OMP 3.5 exposes Vue and the supported store extension API through pkp. */
 (() => {
     function rules(submission, stageId = submission?.stageId) {
-        return submission?.editorialAdvisor?.stages?.[stageId] || submission?.editorialAdvisor || {};
+        return submission?.assistantPermissions?.stages?.[stageId] || submission?.assistantPermissions || {};
     }
 
     pkp.registry.storeExtend('workflow', ({store}) => {
@@ -41,7 +41,7 @@
             if (!items.length || store.getItemActions({participant: args.participant}).length) return items;
             // Native info components forward attributes to their root; CSS hides this row's empty menu.
             return items.map((item, index) => index ? item : {...item,
-                props: {...item.props, 'data-advisor-empty-actions': true},
+                props: {...item.props, 'data-assistantPermissions-empty-actions': true},
             });
         });
     });

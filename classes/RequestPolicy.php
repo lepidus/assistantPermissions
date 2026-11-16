@@ -1,6 +1,6 @@
 <?php
 
-namespace APP\plugins\generic\editorialAdvisor\classes;
+namespace APP\plugins\generic\assistantPermissions\classes;
 
 use PKP\core\PKPBaseController;
 use PKP\core\PKPRequest;
@@ -20,7 +20,7 @@ class RequestPolicy extends AuthorizationPolicy
         private string $operation = '',
         private ?PKPBaseController $controller = null
     ) {
-        parent::__construct('plugins.generic.editorialAdvisor.denied');
+        parent::__construct('plugins.generic.assistantPermissions.denied');
 
         $this->requestTargets = new RequestTargets($request, $controller);
     }

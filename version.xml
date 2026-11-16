@@ -12,7 +12,7 @@
 <version>
 	<application>assistantPermissions</application>
 	<type>plugins.generic</type>
-	<release>1.0.0.0</release>
-	<date>2026-11-13</date>
+	<release>0.1.0.0</release>
+	<date>2026-11-16</date>
 	<class>AssistantPermissionsPlugin</class>
 </version>

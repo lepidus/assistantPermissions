@@ -901,6 +901,28 @@ class AccessIntegrationTest extends TestCase
         }
     }
 
+    public function testApiRulesUseThePathAsDecodedByTheRouter(): void
+    {
+        DB::table('stage_assignments')->where('submission_id', $this->submissionId)->update(['recommend_only' => false]);
+        $previousHttp = app(\Illuminate\Http\Request::class);
+        try {
+            foreach ([
+                [\PKP\API\v1\invitations\InvitationController::class, 'PUT', '/press/api/v1/invitations/7/%69nvite', []],
+                [\PKP\API\v1\submissions\PKPSubmissionFileController::class, 'POST', '/press/api/v1/submissions/' . $this->submissionId . '/%66iles', []],
+                [\APP\API\v1\submissions\SubmissionController::class, 'POST', '/press/api/v1/submissions/' . $this->submissionId . '/%64ecisions',
+                    ['actions' => [['id' => 'notifyAuthors', 'recipients' => [123]]]]],
+            ] as [$class, $method, $path, $input]) {
+                $controller = $this->getMockBuilder($class)->onlyMethods(['getParameter'])->getMock();
+                $controller->method('getParameter')->willReturnCallback(fn ($name, $default = null) =>
+                    $name === 'submissionId' && !str_contains($path, 'invitations') ? $this->submissionId : $default);
+                app()->instance(\Illuminate\Http\Request::class, \Illuminate\Http\Request::create($path, $method, $input));
+                self::assertSame(AuthorizationPolicy::AUTHORIZATION_DENY, (new RequestPolicy($this->request(), controller: $controller))->effect(), $path);
+            }
+        } finally {
+            app()->instance(\Illuminate\Http\Request::class, $previousHttp);
+        }
+    }
+
     public function testFileOptionPersistsIndependentlyAndCanBeDisabled(): void
     {
         DB::table('stage_assignments')->where('submission_id', $this->submissionId)->update(['recommend_only' => false]);

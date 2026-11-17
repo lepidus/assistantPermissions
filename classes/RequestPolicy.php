@@ -39,7 +39,8 @@ class RequestPolicy extends AuthorizationPolicy
             $rules = $access->restrictions($context->getId(), $user->getId(), $submissionId, $stageId);
             if ($this->controller) {
                 $http = app(\Illuminate\Http\Request::class);
-                if (!$rules->allowsApi($http->method(), $http->path())
+                // The router matches routes against the decoded path, so the rules must too.
+                if (!$rules->allowsApi($http->method(), $http->decodedPath())
                     || !$this->allowsDecisionActions($rules, $access, $submissionId, $stageId)) {
                     return self::AUTHORIZATION_DENY;
                 }
@@ -93,7 +94,7 @@ class RequestPolicy extends AuthorizationPolicy
     {
         $http = app(\Illuminate\Http\Request::class);
         if ((!$rules->blockContact && !$rules->restrictFiles) || $http->method() !== 'POST'
-            || !preg_match('~(?:^|/)submissions/\d+/decisions/?$~', $http->path())) {
+            || !preg_match('~(?:^|/)submissions/\d+/decisions/?$~', $http->decodedPath())) {
             return true;
         }
 

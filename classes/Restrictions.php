@@ -43,6 +43,12 @@ class Restrictions
             return false;
         }
 
+        // Approving a proof changes the proof file, although the grid manages publication formats.
+        if ($this->restrictFiles && $component === 'grid.catalogentry.publicationformatgridhandler'
+            && $operation === 'setprooffilecompletion') {
+            return false;
+        }
+
         if ($this->restrictFiles && $isFileComponent) {
             return in_array($operation, [
                 'fetchgrid', 'fetchrow', 'fetch', 'viewfile', 'downloadfile', 'downloadallfiles',

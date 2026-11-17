@@ -125,6 +125,14 @@ class RestrictionsTest extends TestCase
         self::assertTrue($rules->allowsComponent('grid.eventLog.SubmissionFileEventLogGridHandler', 'fetchGrid'));
     }
 
+    public function testFileOptionKeepsProofFilesUnchanged(): void
+    {
+        $component = 'grid.catalogEntry.PublicationFormatGridHandler';
+        self::assertFalse((new Restrictions(false, false, true))->allowsComponent($component, 'setProofFileCompletion'));
+        self::assertTrue((new Restrictions(false, false, true))->allowsComponent($component, 'fetchGrid'));
+        self::assertTrue((new Restrictions(true, true, false))->allowsComponent($component, 'setProofFileCompletion'));
+    }
+
     public function testFileComponentsAreRecognisedRegardlessOfLetterCase(): void
     {
         $rules = new Restrictions(false, false, true);

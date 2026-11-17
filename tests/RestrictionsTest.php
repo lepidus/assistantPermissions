@@ -54,6 +54,24 @@ class RestrictionsTest extends TestCase
         self::assertFalse($rules->allowsApi('POST', 'submissions/12/emails'));
         self::assertTrue($rules->allowsApi('GET', 'submissions/12/emails'));
     }
+
+    public function testNoContactApiCannotComposeOrSendInvitations(): void
+    {
+        $rules = new Restrictions(false, true);
+        foreach ([
+            ['POST', 'press/api/v1/invitations/add/userRoleAssignment'],
+            ['PUT', 'press/api/v1/invitations/7/populate'],
+            ['PUT', 'press/api/v1/invitations/7/invite'],
+        ] as [$method, $path]) {
+            self::assertFalse($rules->allowsApi($method, $path), $path);
+            self::assertTrue((new Restrictions(true, false, true))->allowsApi($method, $path), $path);
+        }
+        self::assertTrue($rules->allowsApi('GET', 'press/api/v1/invitations/7'));
+        self::assertTrue($rules->allowsApi('PUT', 'press/api/v1/invitations/7/cancel'));
+        // Invitations addressed to the assistant remain answerable.
+        self::assertTrue($rules->allowsApi('PUT', 'press/api/v1/invitations/7/key/abc/finalize'));
+        self::assertTrue($rules->allowsApi('PUT', 'press/api/v1/invitations/7/key/abc/decline'));
+    }
     public function testRestrictedFilesCanOnlyBeReadThroughComponentsAndApi(): void
     {
         $rules = new Restrictions(false, false, true);

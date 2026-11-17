@@ -63,6 +63,11 @@ class Restrictions
             return false;
         }
 
+        // Invitations carry a message composed by the sender; replies by key stay available.
+        if ($this->blockContact && preg_match('~(?:^|/)invitations/(?:add/[^/]+|\d+/(?:populate|invite))/?$~', $path)) {
+            return false;
+        }
+
         if ($this->recommendOnly && preg_match('~(?:^|/)(decisions?|reviews?|reviewers?|reviewassignments|reviewrounds)(?:/|$)~', $path)) {
             return false;
         }

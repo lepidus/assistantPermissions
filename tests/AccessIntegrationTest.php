@@ -825,6 +825,28 @@ class AccessIntegrationTest extends TestCase
         }
     }
 
+    public function testContactOptionAppliesToInvitationsOutsideASubmission(): void
+    {
+        DB::table('stage_assignments')->where('submission_id', $this->submissionId)->update(['recommend_only' => false]);
+        $controller = $this->getMockBuilder(\PKP\API\v1\invitations\InvitationController::class)
+            ->onlyMethods(['getParameter'])->getMock();
+        $controller->method('getParameter')->willReturnCallback(fn ($name, $default = null) => $default);
+        $previousHttp = app(\Illuminate\Http\Request::class);
+        try {
+            foreach (['press/api/v1/invitations/7/populate', 'press/api/v1/invitations/7/invite'] as $path) {
+                app()->instance(\Illuminate\Http\Request::class, \Illuminate\Http\Request::create('/' . $path, 'PUT'));
+                $this->group->{Access::BLOCK_CONTACT} = true;
+                $this->group->save();
+                self::assertSame(AuthorizationPolicy::AUTHORIZATION_DENY, (new RequestPolicy($this->request(), controller: $controller))->effect());
+                $this->group->{Access::BLOCK_CONTACT} = false;
+                $this->group->save();
+                self::assertSame(AuthorizationDecisionManager::AUTHORIZATION_NOT_APPLICABLE, (new RequestPolicy($this->request(), controller: $controller))->effect());
+            }
+        } finally {
+            app()->instance(\Illuminate\Http\Request::class, $previousHttp);
+        }
+    }
+
     public function testFileOptionPersistsIndependentlyAndCanBeDisabled(): void
     {
         DB::table('stage_assignments')->where('submission_id', $this->submissionId)->update(['recommend_only' => false]);

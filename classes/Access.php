@@ -15,10 +15,10 @@ class Access
 
     private array $groupsByUser = [];
 
-    /** Restrictions apply if any active Assistant assignment is restricted, regardless of its name. */
+    /** Restrictions apply if any applicable Assistant group is restricted, regardless of its name. */
     public function restrictions(int $contextId, int $userId, ?int $submissionId = null, ?int $stageId = null): Restrictions
     {
-        $groups = $this->activeAssistantGroups($contextId, $userId);
+        $groups = $this->applicableAssistantGroups($contextId, $userId);
 
         if ($submissionId !== null) {
             $stageId ??= (int) DB::table('submissions')->where('submission_id', $submissionId)->value('stage_id');
@@ -36,13 +36,27 @@ class Access
         );
     }
 
-    private function activeAssistantGroups(int $contextId, int $userId)
+    /**
+     * Assistant groups whose rules apply to the user: groups with an active membership and, like the core,
+     * which honours an Assistant stage assignment while the user holds the Assistant role in any active group,
+     * groups the user is still assigned through after that membership ended.
+     */
+    private function applicableAssistantGroups(int $contextId, int $userId)
     {
         $key = $contextId . ':' . $userId;
+        if (array_key_exists($key, $this->groupsByUser)) {
+            return $this->groupsByUser[$key];
+        }
 
-        return $this->groupsByUser[$key] ??= UserGroup::withContextIds([$contextId])
-            ->withRoleIds([Role::ROLE_ID_ASSISTANT])
-            ->whereHas('userUserGroups', fn ($q) => $q->withActive()->withUserId($userId))
+        $groups = UserGroup::withContextIds([$contextId])->withRoleIds([Role::ROLE_ID_ASSISTANT]);
+        $activeMembership = fn ($q) => $q->withActive()->withUserId($userId);
+        if (!(clone $groups)->whereHas('userUserGroups', $activeMembership)->exists()) {
+            return $this->groupsByUser[$key] = collect();
+        }
+
+        return $this->groupsByUser[$key] = $groups
+            ->where(fn ($q) => $q->whereHas('userUserGroups', $activeMembership)
+                ->orWhereHas('stageAssignments', fn ($q) => $q->withUserId($userId)))
             ->with(['userGroupStages', 'stageAssignments' => fn ($q) => $q->withUserId($userId)])
             ->get();
     }

@@ -135,6 +135,36 @@ class AccessIntegrationTest extends TestCase
         self::assertFalse((new Access())->canRecommend($this->contextId, $this->userId, $this->submissionId, 3));
     }
 
+    public function testRestrictionsFollowAssignmentsTheCoreStillHonours(): void
+    {
+        DB::table('stage_assignments')->where('submission_id', $this->submissionId)->update(['recommend_only' => false]);
+        DB::table('user_user_groups')->where('user_group_id', $this->group->id)->update(['date_end' => '2000-01-01']);
+        $otherGroup = new UserGroup();
+        $otherGroup->fill([
+            'contextId' => $this->contextId, 'roleId' => Role::ROLE_ID_ASSISTANT,
+            'name' => ['en' => 'Unrestricted assistant role'], 'abbrev' => ['en' => 'UA'], 'recommendOnly' => false,
+        ]);
+        $otherGroup->save();
+        DB::table('user_user_groups')->insert(['user_group_id' => $otherGroup->id, 'user_id' => $this->userId]);
+        DB::table('user_group_stage')->insert([
+            'context_id' => $this->contextId, 'user_group_id' => $otherGroup->id, 'stage_id' => 3,
+        ]);
+        // The core grants the stage while the user holds the Assistant role in any active group.
+        $accessible = Repo::user()->getAccessibleWorkflowStages($this->userId, $this->contextId, Repo::submission()->get($this->submissionId));
+        self::assertContains(Role::ROLE_ID_ASSISTANT, $accessible[3] ?? []);
+        $rules = (new Access())->restrictions($this->contextId, $this->userId, $this->submissionId, 3);
+        self::assertTrue($rules->blockContact);
+        self::assertTrue($rules->restrictFiles);
+        self::assertTrue((new Access())->restrictions($this->contextId, $this->userId)->blockContact);
+
+        DB::table('user_user_groups')->where('user_group_id', $otherGroup->id)->update(['date_end' => '2000-01-01']);
+        $accessible = Repo::user()->getAccessibleWorkflowStages($this->userId, $this->contextId, Repo::submission()->get($this->submissionId));
+        self::assertNotContains(Role::ROLE_ID_ASSISTANT, $accessible[3] ?? []);
+        $rules = (new Access())->restrictions($this->contextId, $this->userId, $this->submissionId, 3);
+        self::assertFalse($rules->blockContact);
+        self::assertFalse($rules->restrictFiles);
+    }
+
     public function testSpoofedSubmissionCannotBypassQueryContactRestriction(): void
     {
         $queryId = DB::table('queries')->insertGetId([

@@ -205,6 +205,29 @@ class AccessIntegrationTest extends TestCase
         self::assertSame(AuthorizationPolicy::AUTHORIZATION_DENY, $deletePolicy->effect());
     }
 
+    public function testRequestsOfUsersWithoutAssistantGroupsNeedOnlyTheGroupLookup(): void
+    {
+        $roundId = DB::table('review_rounds')->insertGetId([
+            'submission_id' => $this->submissionId, 'stage_id' => 3, 'round' => 1,
+        ]);
+        $otherUserId = (int) DB::table('users')->where('user_id', '<>', $this->userId)->value('user_id');
+        $request = $this->request(['submissionId' => $this->submissionId, 'stageId' => 3, 'reviewRoundId' => $roundId], $otherUserId);
+        $policy = new RequestPolicy($request, 'grid.users.reviewer.ReviewerGridHandler', 'updateReviewer');
+        DB::flushQueryLog();
+        DB::enableQueryLog();
+        try {
+            self::assertSame(AuthorizationDecisionManager::AUTHORIZATION_NOT_APPLICABLE, $policy->effect());
+            self::assertCount(1, DB::getQueryLog());
+        } finally {
+            DB::disableQueryLog();
+        }
+        self::assertSame(AuthorizationPolicy::AUTHORIZATION_DENY, (new RequestPolicy(
+            $this->request(['submissionId' => $this->submissionId, 'stageId' => 3, 'reviewRoundId' => $roundId]),
+            'grid.users.reviewer.ReviewerGridHandler',
+            'updateReviewer'
+        ))->effect());
+    }
+
     public function testComponentPolicyBlocksManagementWithoutGrantingCoreAccess(): void
     {
         $request = $this->request(['submissionId' => $this->submissionId]);

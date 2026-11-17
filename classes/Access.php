@@ -15,6 +15,12 @@ class Access
 
     private array $groupsByUser = [];
 
+    /** Users without an applicable Assistant group are never restricted by this plugin. */
+    public function hasApplicableGroups(int $contextId, int $userId): bool
+    {
+        return $this->applicableAssistantGroups($contextId, $userId)->isNotEmpty();
+    }
+
     /** Restrictions apply if any applicable Assistant group is restricted, regardless of its name. */
     public function restrictions(int $contextId, int $userId, ?int $submissionId = null, ?int $stageId = null): Restrictions
     {

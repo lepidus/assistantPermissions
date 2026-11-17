@@ -9,8 +9,19 @@ class Restrictions
     {
     }
 
+    /**
+     * File components contain "file" in any letter case, e.g. api.file.* or EditorReviewFilesGridHandler.
+     * Class names resolve case-insensitively, so the requested name cannot be trusted for word boundaries.
+     * "profile" (tab.user.ProfileTabHandler) is not a file component.
+     */
+    public static function isFileComponent(string $component): bool
+    {
+        return (bool) preg_match('/(?<!pro)file/i', $component);
+    }
+
     public function allowsComponent(string $component, string $operation): bool
     {
+        $isFileComponent = self::isFileComponent($component);
         $component = strtolower($component);
         $operation = strtolower($operation);
         if ($this->recommendOnly && str_contains($component, 'reviewer')) {
@@ -32,7 +43,13 @@ class Restrictions
             return false;
         }
 
-        if ($this->restrictFiles && str_contains($component, 'file')) {
+        // Approving a proof changes the proof file, although the grid manages publication formats.
+        if ($this->restrictFiles && $component === 'grid.catalogentry.publicationformatgridhandler'
+            && $operation === 'setprooffilecompletion') {
+            return false;
+        }
+
+        if ($this->restrictFiles && $isFileComponent) {
             return in_array($operation, [
                 'fetchgrid', 'fetchrow', 'fetch', 'viewfile', 'downloadfile', 'downloadallfiles',
                 'downloadlibraryfile', 'recorddownload', 'enablelinkaction',
@@ -60,6 +77,11 @@ class Restrictions
         }
 
         if ($this->blockContact && preg_match('~(?:^|/)(_?emails?|messages?|reviews?|reviewers?|reviewassignments)(?:/|$)~', $path)) {
+            return false;
+        }
+
+        // Invitations carry a message composed by the sender; replies by key stay available.
+        if ($this->blockContact && preg_match('~(?:^|/)invitations/(?:add/[^/]+|\d+/(?:populate|invite))/?$~', $path)) {
             return false;
         }
 

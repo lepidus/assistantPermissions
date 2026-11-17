@@ -90,6 +90,9 @@ class AssistantPermissionsPlugin extends GenericPlugin
 
     private function registerApiControllers(string $name, APIRouter $router): bool
     {
+        // Register the restrictions first: hook failures are logged and skipped by the core.
+        Hook::add('APIHandler::endpoints::' . $router->getEntity(), $this->applyApiRestrictions(...));
+
         $request = Application::get()->getRequest();
 
         if (app(\Illuminate\Http\Request::class)->method() === 'POST'
@@ -98,8 +101,6 @@ class AssistantPermissionsPlugin extends GenericPlugin
             && (new Access())->restrictions($request->getContext()->getId(), $request->getUser()->getId(), (int) $match[1])->recommendOnly) {
             $router->registerPluginApiControllers([new AssistantPermissionsSubmissionController()]);
         }
-
-        Hook::add('APIHandler::endpoints::' . $router->getEntity(), $this->applyApiRestrictions(...));
 
         return false;
     }
@@ -129,23 +130,30 @@ class AssistantPermissionsPlugin extends GenericPlugin
         }
 
         $request = Application::get()->getRequest();
+        $handler->addPolicy(new RequestPolicy($request, $component, $operation));
+        $args[2] = $handler;
 
-        if ($component === 'grid.files.attachment.EditorReviewAttachmentsGridHandler'
-            && $request->getContext() && $request->getUser()
-            && (new Access())->restrictions(
-                $request->getContext()->getId(),
-                $request->getUser()->getId(),
-                (int) $request->getUserVar('submissionId'),
-                (int) $request->getUserVar('stageId')
-            )->restrictFiles) {
-            $handler->getCapabilities()->setCanAdd(false);
-            $handler->getCapabilities()->setCanEdit(false);
-            $handler->getCapabilities()->setCanDelete(false);
-            $handler->getCapabilities()->setCanManage(false);
+        if ($component === 'grid.files.attachment.EditorReviewAttachmentsGridHandler' && $request->getContext() && $request->getUser()) {
+            // A failure here must not abort the hook, or the core would load the handler without the policy.
+            try {
+                $readOnly = (new Access())->restrictions(
+                    $request->getContext()->getId(),
+                    $request->getUser()->getId(),
+                    (int) $request->getUserVar('submissionId'),
+                    (int) $request->getUserVar('stageId')
+                )->restrictFiles;
+            } catch (\Throwable $e) {
+                error_log('assistantPermissions: ' . $e->getMessage());
+                $readOnly = true;
+            }
+            if ($readOnly) {
+                $handler->getCapabilities()->setCanAdd(false);
+                $handler->getCapabilities()->setCanEdit(false);
+                $handler->getCapabilities()->setCanDelete(false);
+                $handler->getCapabilities()->setCanManage(false);
+            }
         }
 
-        $handler->addPolicy(new RequestPolicy(Application::get()->getRequest(), $component, $operation));
-        $args[2] = $handler;
         return true;
     }
 

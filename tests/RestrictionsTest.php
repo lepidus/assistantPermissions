@@ -54,6 +54,24 @@ class RestrictionsTest extends TestCase
         self::assertFalse($rules->allowsApi('POST', 'submissions/12/emails'));
         self::assertTrue($rules->allowsApi('GET', 'submissions/12/emails'));
     }
+
+    public function testNoContactApiCannotComposeOrSendInvitations(): void
+    {
+        $rules = new Restrictions(false, true);
+        foreach ([
+            ['POST', 'press/api/v1/invitations/add/userRoleAssignment'],
+            ['PUT', 'press/api/v1/invitations/7/populate'],
+            ['PUT', 'press/api/v1/invitations/7/invite'],
+        ] as [$method, $path]) {
+            self::assertFalse($rules->allowsApi($method, $path), $path);
+            self::assertTrue((new Restrictions(true, false, true))->allowsApi($method, $path), $path);
+        }
+        self::assertTrue($rules->allowsApi('GET', 'press/api/v1/invitations/7'));
+        self::assertTrue($rules->allowsApi('PUT', 'press/api/v1/invitations/7/cancel'));
+        // Invitations addressed to the assistant remain answerable.
+        self::assertTrue($rules->allowsApi('PUT', 'press/api/v1/invitations/7/key/abc/finalize'));
+        self::assertTrue($rules->allowsApi('PUT', 'press/api/v1/invitations/7/key/abc/decline'));
+    }
     public function testRestrictedFilesCanOnlyBeReadThroughComponentsAndApi(): void
     {
         $rules = new Restrictions(false, false, true);
@@ -86,6 +104,42 @@ class RestrictionsTest extends TestCase
         }
         self::assertTrue((new Restrictions(false, true))->allowsComponent('wizard.fileUpload.FileUploadWizardHandler', 'uploadFile'));
         self::assertTrue((new Restrictions(false, true))->allowsApi('POST', 'submissions/12/files'));
+    }
+
+    public function testFileOptionAppliesOnlyToFileComponents(): void
+    {
+        $rules = new Restrictions(false, false, true);
+        foreach (['identity', 'saveIdentity', 'changePassword', 'savePassword', 'saveAPIProfile', 'saveNotificationSettings'] as $op) {
+            self::assertTrue($rules->allowsComponent('tab.user.ProfileTabHandler', $op), $op);
+        }
+        foreach ([
+            ['api.file.ManageFileApiHandler', 'deleteFile'],
+            ['wizard.fileUpload.FileUploadWizardHandler', 'uploadFile'],
+            ['informationCenter.FileInformationCenterHandler', 'saveNote'],
+            ['grid.files.review.EditorReviewFilesGridHandler', 'selectFiles'],
+            ['grid.files.submissionDocuments.SubmissionDocumentsFilesGridHandler', 'saveFile'],
+            ['grid.eventLog.SubmissionFileEventLogGridHandler', 'deleteLog'],
+        ] as [$component, $op]) {
+            self::assertFalse($rules->allowsComponent($component, $op), $component);
+        }
+        self::assertTrue($rules->allowsComponent('grid.eventLog.SubmissionFileEventLogGridHandler', 'fetchGrid'));
+    }
+
+    public function testFileOptionKeepsProofFilesUnchanged(): void
+    {
+        $component = 'grid.catalogEntry.PublicationFormatGridHandler';
+        self::assertFalse((new Restrictions(false, false, true))->allowsComponent($component, 'setProofFileCompletion'));
+        self::assertTrue((new Restrictions(false, false, true))->allowsComponent($component, 'fetchGrid'));
+        self::assertTrue((new Restrictions(true, true, false))->allowsComponent($component, 'setProofFileCompletion'));
+    }
+
+    public function testFileComponentsAreRecognisedRegardlessOfLetterCase(): void
+    {
+        $rules = new Restrictions(false, false, true);
+        foreach (['grid.fiLes.review.EditorReviewFiLesGridHandler', 'API.FILE.MANAGEFILEAPIHANDLER', 'wizard.FILEUpload.FILEUploadWizardHandler'] as $component) {
+            self::assertFalse($rules->allowsComponent($component, 'deleteFile'), $component);
+        }
+        self::assertTrue($rules->allowsComponent('TAB.USER.PROFILETABHANDLER', 'savePassword'));
     }
 
     public function testFileRestrictionIsIndependentOfRecommendationAndContact(): void

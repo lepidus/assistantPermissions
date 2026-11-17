@@ -1023,6 +1023,58 @@ class AccessIntegrationTest extends TestCase
         }
     }
 
+    public function testFileOptionKeepsPublicationFormatFilesAtAnyStage(): void
+    {
+        DB::table('stage_assignments')->where('submission_id', $this->submissionId)->update(['recommend_only' => false]);
+        // Format operations need submission access only, so the role's file option applies outside its stages too.
+        DB::table('submissions')->where('submission_id', $this->submissionId)->update(['stage_id' => 5]);
+        $publicationId = DB::table('publications')->insertGetId([
+            'submission_id' => $this->submissionId, 'status' => 1, 'version' => 1,
+        ]);
+        $formatIds = [];
+        foreach ([true, false] as $withFile) {
+            $formatId = DB::table('publication_formats')->insertGetId([
+                'publication_id' => $publicationId, 'seq' => 0, 'is_approved' => 0, 'is_available' => 0,
+            ]);
+            if ($withFile) {
+                $file = (array) DB::table('submission_files')->first();
+                unset($file['submission_file_id']);
+                $file['submission_id'] = $this->submissionId;
+                $file['file_stage'] = \PKP\submissionFile\SubmissionFile::SUBMISSION_FILE_PROOF;
+                $file['assoc_type'] = \APP\core\Application::ASSOC_TYPE_REPRESENTATION;
+                $file['assoc_id'] = $formatId;
+                $proofId = DB::table('submission_files')->insertGetId($file);
+            }
+            $formatIds[$withFile] = $formatId;
+        }
+        $component = 'grid.catalogEntry.PublicationFormatGridHandler';
+        $params = ['submissionId' => $this->submissionId, 'publicationId' => $publicationId];
+        $effect = fn (string $operation, array $extra) => (new RequestPolicy($this->request($params + $extra), $component, $operation))->effect();
+        self::assertSame(AuthorizationPolicy::AUTHORIZATION_DENY, $effect('deleteFormat', ['representationId' => $formatIds[true]]));
+        self::assertSame(AuthorizationPolicy::AUTHORIZATION_DENY, $effect('setProofFileCompletion', ['representationId' => $formatIds[true], 'submissionFileId' => $proofId]));
+        self::assertSame(AuthorizationDecisionManager::AUTHORIZATION_NOT_APPLICABLE, $effect('deleteFormat', ['representationId' => $formatIds[false]]));
+
+        $controller = $this->getMockBuilder(\APP\API\v1\submissions\SubmissionController::class)->onlyMethods(['getParameter'])->getMock();
+        $controller->method('getParameter')->willReturnCallback(fn ($name, $default = null) => $params[$name] ?? $default);
+        $previousHttp = app(\Illuminate\Http\Request::class);
+        try {
+            app()->instance(\Illuminate\Http\Request::class, \Illuminate\Http\Request::create(
+                '/press/api/v1/submissions/' . $this->submissionId . '/publications/' . $publicationId,
+                'DELETE'
+            ));
+            self::assertSame(AuthorizationPolicy::AUTHORIZATION_DENY, (new RequestPolicy($this->request($params), controller: $controller))->effect());
+            DB::table('submission_files')->where('submission_file_id', $proofId)->delete();
+            self::assertSame(AuthorizationDecisionManager::AUTHORIZATION_NOT_APPLICABLE, (new RequestPolicy($this->request($params), controller: $controller))->effect());
+            DB::table('submission_files')->insert(['submission_file_id' => $proofId] + $file);
+            $this->group->{Access::RESTRICT_FILES} = false;
+            $this->group->save();
+            self::assertSame(AuthorizationDecisionManager::AUTHORIZATION_NOT_APPLICABLE, (new RequestPolicy($this->request($params), controller: $controller))->effect());
+            self::assertSame(AuthorizationDecisionManager::AUTHORIZATION_NOT_APPLICABLE, $effect('deleteFormat', ['representationId' => $formatIds[true]]));
+        } finally {
+            app()->instance(\Illuminate\Http\Request::class, $previousHttp);
+        }
+    }
+
     public function testFileOptionIsSavedEvenWithoutAssignedStages(): void
     {
         $form = new AssistantPermissionsUserGroupForm($this->contextId, 0);

@@ -71,7 +71,51 @@ class RequestPolicy extends AuthorizationPolicy
             }
         }
 
+        if ($this->changesPublicationFormatFiles($access, $context->getId(), $user->getId())) {
+            return self::AUTHORIZATION_DENY;
+        }
+
         return AuthorizationDecisionManager::AUTHORIZATION_NOT_APPLICABLE;
+    }
+
+    /**
+     * Approving proofs, deleting a format with files or an unpublished version with format files changes those files.
+     * The core grants these operations through submission or production access, not through the role's review stages,
+     * so the file option of any Assistant group assigned to the submission applies.
+     */
+    private function changesPublicationFormatFiles(Access $access, int $contextId, int $userId): bool
+    {
+        $submissionId = (int) $this->requestTargets->parameter('submissionId');
+        if ($this->controller) {
+            $http = app(\Illuminate\Http\Request::class);
+            if ($http->method() !== 'DELETE' || !preg_match('~(?:^|/)submissions/\d+/publications/\d+/?$~', $http->decodedPath())) {
+                return false;
+            }
+            $formatIds = \Illuminate\Support\Facades\DB::table('publication_formats')
+                ->where('publication_id', (int) $this->requestTargets->parameter('publicationId'))
+                ->pluck('publication_format_id')->map(fn ($id) => (int) $id)->all();
+        } elseif (strtolower($this->component) === 'grid.catalogentry.publicationformatgridhandler'
+            && in_array(strtolower($this->operation), ['deleteformat', 'setprooffilecompletion'], true)) {
+            $formatIds = [(int) $this->requestTargets->parameter('representationId')];
+        } else {
+            return false;
+        }
+
+        $restrictFiles = false;
+        foreach ([1, 2, 3, 4, 5] as $stageId) {
+            $restrictFiles = $restrictFiles || ($submissionId && $access->restrictions($contextId, $userId, $submissionId, $stageId)->restrictFiles);
+        }
+        if (!$restrictFiles) {
+            return false;
+        }
+        if (!$this->controller && strtolower($this->operation) === 'setprooffilecompletion') {
+            return true;
+        }
+
+        return (bool) array_filter($formatIds) && \APP\facades\Repo::submissionFile()->getCollector()
+            ->filterBySubmissionIds([$submissionId])
+            ->filterByAssoc(\APP\core\Application::ASSOC_TYPE_REPRESENTATION, $formatIds)
+            ->getCount() > 0;
     }
 
     private function modifiesDiscussion(): bool

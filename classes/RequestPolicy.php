@@ -34,6 +34,10 @@ class RequestPolicy extends AuthorizationPolicy
         }
 
         $access = new Access();
+        if (!$access->hasApplicableGroups($context->getId(), $user->getId())) {
+            return AuthorizationDecisionManager::AUTHORIZATION_NOT_APPLICABLE;
+        }
+
         $targets = $this->requestTargets->resolve();
         foreach ($targets ?: [[null, null]] as [$submissionId, $stageId]) {
             $rules = $access->restrictions($context->getId(), $user->getId(), $submissionId, $stageId);

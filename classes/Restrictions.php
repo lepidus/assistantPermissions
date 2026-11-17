@@ -9,11 +9,14 @@ class Restrictions
     {
     }
 
-    /** File components name "file" or "files" as a word, e.g. api.file.* or EditorReviewFilesGridHandler. */
+    /**
+     * File components contain "file" in any letter case, e.g. api.file.* or EditorReviewFilesGridHandler.
+     * Class names resolve case-insensitively, so the requested name cannot be trusted for word boundaries.
+     * "profile" (tab.user.ProfileTabHandler) is not a file component.
+     */
     public static function isFileComponent(string $component): bool
     {
-        $words = preg_split('/\.|(?<=[a-z0-9])(?=[A-Z])/', $component);
-        return (bool) array_intersect(array_map('strtolower', $words), ['file', 'files']);
+        return (bool) preg_match('/(?<!pro)file/i', $component);
     }
 
     public function allowsComponent(string $component, string $operation): bool

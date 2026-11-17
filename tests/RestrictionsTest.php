@@ -125,6 +125,15 @@ class RestrictionsTest extends TestCase
         self::assertTrue($rules->allowsComponent('grid.eventLog.SubmissionFileEventLogGridHandler', 'fetchGrid'));
     }
 
+    public function testFileComponentsAreRecognisedRegardlessOfLetterCase(): void
+    {
+        $rules = new Restrictions(false, false, true);
+        foreach (['grid.fiLes.review.EditorReviewFiLesGridHandler', 'API.FILE.MANAGEFILEAPIHANDLER', 'wizard.FILEUpload.FILEUploadWizardHandler'] as $component) {
+            self::assertFalse($rules->allowsComponent($component, 'deleteFile'), $component);
+        }
+        self::assertTrue($rules->allowsComponent('TAB.USER.PROFILETABHANDLER', 'savePassword'));
+    }
+
     public function testFileRestrictionIsIndependentOfRecommendationAndContact(): void
     {
         foreach ([false, true] as $recommend) {

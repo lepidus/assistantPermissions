@@ -398,6 +398,30 @@ class AccessIntegrationTest extends TestCase
         self::assertStringNotContainsString('add_note', $html);
     }
 
+    public function testRecommendationReviewViewShowsReviewContentOnlyAfterCompletion(): void
+    {
+        $review = Repo::reviewAssignment()->newDataObject([
+            'id' => 1, 'submissionId' => $this->submissionId, 'stageId' => 3, 'reviewerId' => $this->userId,
+            'recommendation' => 1, 'competingInterests' => 'Interest statement',
+        ]);
+        $comment = new \PKP\submission\SubmissionComment();
+        $comment->setComments('Reviewer comment text');
+        $manager = \APP\template\TemplateManager::getManager(Registry::get('request'));
+        foreach ([null => false, '2026-01-01 00:00:00' => true] as $dateCompleted => $visible) {
+            $review->setDateCompleted($dateCompleted ?: null);
+            $manager->assign([
+                'reviewAssignment' => $review, 'submission' => Repo::submission()->get($this->submissionId),
+                'comments' => new \PKP\core\ArrayItemIterator([$comment]),
+                'commentsPrivate' => new \PKP\core\ArrayItemIterator([]),
+            ]);
+            $html = $manager->fetch('controllers/grid/users/reviewer/readReview.tpl');
+            self::assertStringContainsString('data-cy="assistantPermissions-read-review"', $html);
+            foreach (['Reviewer comment text', 'Interest statement', __('plugins.generic.assistantPermissions.reviewerRecommendation.1')] as $text) {
+                self::assertSame($visible, str_contains($html, $text), $text);
+            }
+        }
+    }
+
     public function testUnrelatedQueryCannotMaskTheStageOfANotification(): void
     {
         $query = \PKP\query\Query::create([

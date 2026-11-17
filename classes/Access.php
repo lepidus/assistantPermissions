@@ -102,9 +102,14 @@ class Access
             ->withRoleIds([Role::ROLE_ID_AUTHOR])->pluck('user_id')->all();
         $reviewers = Repo::reviewAssignment()->getCollector()->filterBySubmissionIds([$submissionId])
             ->getMany()->map(fn ($r) => $r->getReviewerId())->all();
-        // Contributors may have an account without an Author stage assignment.
+        // Contributors may have an account without an Author stage assignment. Emails match regardless of case:
+        // PostgreSQL compares case-sensitively and the core indexes users by LOWER(email) there; MySQL and MariaDB
+        // already compare them with the case-insensitive collation used by PKP, which keeps the email index usable.
+        $sameEmail = DB::connection()->getDriverName() === 'pgsql'
+            ? fn ($join) => $join->on(DB::raw('LOWER(u.email)'), '=', DB::raw('LOWER(a.email)'))
+            : fn ($join) => $join->on('u.email', '=', 'a.email');
         $contributors = DB::table('authors as a')->join('publications as p', 'p.publication_id', '=', 'a.publication_id')
-            ->join('users as u', 'u.email', '=', 'a.email')->where('p.submission_id', $submissionId)
+            ->join('users as u', $sameEmail)->where('p.submission_id', $submissionId)
             ->pluck('u.user_id')->all();
         return array_unique(array_map('intval', [...$authors, ...$reviewers, ...$contributors]));
     }

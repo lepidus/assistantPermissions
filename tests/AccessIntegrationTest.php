@@ -165,6 +165,19 @@ class AccessIntegrationTest extends TestCase
         self::assertFalse($rules->restrictFiles);
     }
 
+    public function testContributorAccountsMatchEmailsRegardlessOfLetterCase(): void
+    {
+        $contributor = DB::table('users')->where('user_id', '<>', $this->userId)->first(['user_id', 'email']);
+        $publicationId = DB::table('publications')->insertGetId([
+            'submission_id' => $this->submissionId, 'status' => 1, 'version' => 1,
+        ]);
+        DB::table('authors')->insert([
+            'publication_id' => $publicationId, 'email' => strtoupper($contributor->email),
+            'include_in_browse' => 1, 'seq' => 0,
+        ]);
+        self::assertContains((int) $contributor->user_id, (new Access())->forbiddenParticipants($this->submissionId));
+    }
+
     public function testSpoofedSubmissionCannotBypassQueryContactRestriction(): void
     {
         $queryId = DB::table('queries')->insertGetId([

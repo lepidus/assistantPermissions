@@ -9,8 +9,16 @@ class Restrictions
     {
     }
 
+    /** File components name "file" or "files" as a word, e.g. api.file.* or EditorReviewFilesGridHandler. */
+    public static function isFileComponent(string $component): bool
+    {
+        $words = preg_split('/\.|(?<=[a-z0-9])(?=[A-Z])/', $component);
+        return (bool) array_intersect(array_map('strtolower', $words), ['file', 'files']);
+    }
+
     public function allowsComponent(string $component, string $operation): bool
     {
+        $isFileComponent = self::isFileComponent($component);
         $component = strtolower($component);
         $operation = strtolower($operation);
         if ($this->recommendOnly && str_contains($component, 'reviewer')) {
@@ -32,7 +40,7 @@ class Restrictions
             return false;
         }
 
-        if ($this->restrictFiles && str_contains($component, 'file')) {
+        if ($this->restrictFiles && $isFileComponent) {
             return in_array($operation, [
                 'fetchgrid', 'fetchrow', 'fetch', 'viewfile', 'downloadfile', 'downloadallfiles',
                 'downloadlibraryfile', 'recorddownload', 'enablelinkaction',

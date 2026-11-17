@@ -80,7 +80,7 @@ class RequestPolicy extends AuthorizationPolicy
                 && !in_array(app(\Illuminate\Http\Request::class)->method(), ['GET', 'HEAD', 'OPTIONS'], true);
         }
 
-        return (str_contains(strtolower($this->component), 'quer') || str_contains(strtolower($this->component), 'file'))
+        return (str_contains(strtolower($this->component), 'quer') || Restrictions::isFileComponent($this->component))
             && !in_array(strtolower($this->operation), [
                 'fetchgrid', 'fetchcategory', 'fetchrow', 'fetch', 'readquery', 'participants', 'fetchtemplatebody',
                 'viewfile', 'downloadfile', 'downloadallfiles', 'downloadlibraryfile', 'recorddownload', 'enablelinkaction',

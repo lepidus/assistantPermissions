@@ -106,6 +106,25 @@ class RestrictionsTest extends TestCase
         self::assertTrue((new Restrictions(false, true))->allowsApi('POST', 'submissions/12/files'));
     }
 
+    public function testFileOptionAppliesOnlyToFileComponents(): void
+    {
+        $rules = new Restrictions(false, false, true);
+        foreach (['identity', 'saveIdentity', 'changePassword', 'savePassword', 'saveAPIProfile', 'saveNotificationSettings'] as $op) {
+            self::assertTrue($rules->allowsComponent('tab.user.ProfileTabHandler', $op), $op);
+        }
+        foreach ([
+            ['api.file.ManageFileApiHandler', 'deleteFile'],
+            ['wizard.fileUpload.FileUploadWizardHandler', 'uploadFile'],
+            ['informationCenter.FileInformationCenterHandler', 'saveNote'],
+            ['grid.files.review.EditorReviewFilesGridHandler', 'selectFiles'],
+            ['grid.files.submissionDocuments.SubmissionDocumentsFilesGridHandler', 'saveFile'],
+            ['grid.eventLog.SubmissionFileEventLogGridHandler', 'deleteLog'],
+        ] as [$component, $op]) {
+            self::assertFalse($rules->allowsComponent($component, $op), $component);
+        }
+        self::assertTrue($rules->allowsComponent('grid.eventLog.SubmissionFileEventLogGridHandler', 'fetchGrid'));
+    }
+
     public function testFileRestrictionIsIndependentOfRecommendationAndContact(): void
     {
         foreach ([false, true] as $recommend) {

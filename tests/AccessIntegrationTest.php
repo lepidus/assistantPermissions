@@ -920,6 +920,18 @@ class AccessIntegrationTest extends TestCase
         }
     }
 
+    public function testRestrictedAssistantKeepsAccessToTheirOwnProfile(): void
+    {
+        $request = $this->request();
+        foreach (['saveIdentity', 'savePassword', 'saveAPIProfile'] as $operation) {
+            self::assertSame(
+                AuthorizationDecisionManager::AUTHORIZATION_NOT_APPLICABLE,
+                (new RequestPolicy($request, 'tab.user.ProfileTabHandler', $operation))->effect(),
+                $operation
+            );
+        }
+    }
+
     public function testFileOptionIsSavedEvenWithoutAssignedStages(): void
     {
         $form = new AssistantPermissionsUserGroupForm($this->contextId, 0);

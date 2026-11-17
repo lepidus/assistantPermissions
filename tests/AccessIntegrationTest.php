@@ -254,6 +254,32 @@ class AccessIntegrationTest extends TestCase
         self::assertSame(\PKP\pages\decision\DecisionHandler::class, $method->getDeclaringClass()->getName());
     }
 
+    public function testApiRestrictionsAreRegisteredEvenWhenTheRecommendationControllerCannotBe(): void
+    {
+        $previousPathInfo = $_SERVER['PATH_INFO'] ?? null;
+        $previousHttp = app(\Illuminate\Http\Request::class);
+        $path = '/press/api/v1/submissions/' . $this->submissionId . '/decisions';
+        $_SERVER['PATH_INFO'] = $path;
+        $request = $this->createPartialMock(Request::class, ['getContext', 'getUser', 'getRequestPath']);
+        $request->method('getContext')->willReturn(app('context')->get($this->contextId));
+        $request->method('getUser')->willReturn(Repo::user()->get($this->userId));
+        $request->method('getRequestPath')->willReturn('/index.php' . $path);
+        Registry::set('request', $request);
+        app()->instance(\Illuminate\Http\Request::class, \Illuminate\Http\Request::create($path, 'POST'));
+        try {
+            $router = new \PKP\core\APIRouter();
+            // Another plugin already serves the submissions handler path.
+            $router->registerPluginApiControllers([
+                $this->getMockBuilder(\APP\API\v1\submissions\SubmissionController::class)->onlyMethods([])->getMock(),
+            ]);
+            Hook::run('APIHandler::endpoints::plugin', [$router]);
+            self::assertArrayHasKey('APIHandler::endpoints::submissions', Hook::getHooks());
+        } finally {
+            $previousPathInfo === null ? $_SERVER['PATH_INFO'] = null : $_SERVER['PATH_INFO'] = $previousPathInfo;
+            app()->instance(\Illuminate\Http\Request::class, $previousHttp);
+        }
+    }
+
     public function testNewAssignmentsPreserveTheSelectedRecommendationPermission(): void
     {
         DB::table('stage_assignments')->where('submission_id', $this->submissionId)->delete();
